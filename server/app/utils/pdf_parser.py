@@ -2,9 +2,31 @@ import pymupdf
 from docx import Document
 
 
-def extract_text_from_pdf(file_path: str) -> str:
+'''def extract_text_from_pdf(file_path: str) -> str:
     with pymupdf.open(file_path) as document:
-        return "\n".join(page.get_text() for page in document).strip()
+        return "\n".join(page.get_text() for page in document).strip()'''
+
+def extract_text_from_pdf(file_path: str) -> str:
+
+    with pymupdf.open(file_path) as document:
+
+        print("=" * 80)
+        print("PAGES:", len(document))
+        print("=" * 80)
+
+        all_text = []
+
+        for page_number, page in enumerate(document):
+
+            text = page.get_text()
+
+            print(f"PAGE {page_number + 1}")
+            print("TEXT LENGTH:", len(text))
+            print(text[:500])
+
+            all_text.append(text)
+
+        return "\n".join(all_text).strip()
 
 
 def extract_text_from_docx(file_path: str) -> str:
