@@ -8,6 +8,7 @@ from app.api.recommendations import router as recommendations_router
 from app.api.embeddings import router as embeddings_router
 from contextlib import asynccontextmanager
 from app.ai.qdrant_client import create_collection
+from app.api.assistant import router as assistant_router
 
 @asynccontextmanager
 async def lifespan(app):
@@ -30,7 +31,7 @@ app.include_router(jobs_router)
 app.include_router(analysis_router)
 app.include_router(recommendations_router)
 app.include_router(embeddings_router)
-
+app.include_router(assistant_router)
 
 @app.get("/")
 def root():

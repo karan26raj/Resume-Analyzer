@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE_BYTES: int = 10 * 1024 * 1024
 
     GEMINI_API_KEY: str | None = None
-    GEMINI_MODEL: str = "gemini-2.5-flash"
+    GEMINI_MODEL: str = "gemini-3.6-flash"
     GEMINI_TEMPERATURE: float = 0.2
     GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-001"
 

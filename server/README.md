@@ -1,61 +1,88 @@
 # AI Resume Analyzer API
 
-AI Resume Analyzer is a backend project built using FastAPI, PostgreSQL, Gemini API, and Qdrant Vector Database. The goal of this project is to analyze resumes against job descriptions, identify skill gaps, calculate match scores, and provide AI-powered recommendations using LLMs, embeddings, and Retrieval-Augmented Generation (RAG).
+AI Resume Analyzer is a production-style backend application built with FastAPI, PostgreSQL, Gemini AI, and Qdrant Vector Database. The platform analyzes resumes against job descriptions, identifies skill gaps, calculates match scores, generates recommendations, and provides AI-powered question answering using Retrieval-Augmented Generation (RAG).
 
-This project is being developed as a hands-on learning project to gain practical experience with Backend Development, Generative AI, Vector Databases, and AI-powered applications.
+The project is designed to demonstrate modern Backend Engineering, Generative AI integration, Vector Databases, Semantic Search, and RAG-based applications.
 
 ---
 
-## Features Implemented
+# Features
 
-### Authentication & Security
+## Authentication & Security
 
 * User Registration
 * User Login
 * JWT Authentication
 * Protected API Routes
-* Password Hashing
+* Password Hashing (Argon2)
+* User-specific Data Access
 
-### Resume Management
+## Resume Management
 
-* Upload PDF and DOCX resumes
-* File validation
-* Secure file storage
-* Resume text extraction using PyMuPDF and python-docx
-* Store extracted text in PostgreSQL
-* View uploaded resumes
-* Resume text retrieval
+* Upload PDF Resumes
+* Upload DOCX Resumes
+* File Validation
+* Secure File Storage
+* Resume Text Extraction
+* Resume Metadata Storage
+* Resume Text Retrieval
+* Resume Listing
 
-### Job Description Management
+### Supported Parsers
 
-* Create job descriptions
-* Store job descriptions in PostgreSQL
-* View saved job descriptions
-* Delete job descriptions
+* PyMuPDF (PDF)
+* python-docx (DOCX)
 
-### Resume Analysis
+## Job Description Management
 
-* Resume vs Job Description matching
-* AI-generated match score
-* Matched skills identification
-* Missing skills identification
-* Strengths analysis
-* Weakness analysis
-* Personalized recommendations
+* Create Job Descriptions
+* Store Jobs in PostgreSQL
+* Retrieve Job Details
+* List Saved Jobs
+* Delete Jobs
 
-### Embeddings & Vector Search
+## AI Resume Analysis
 
-* Gemini Embedding API integration
-* Resume chunking
-* Vector generation
-* Qdrant Vector Database integration
-* Resume indexing
-* Semantic similarity search
-* Vector retrieval using embeddings
+* Resume vs Job Matching
+* AI Match Score Generation
+* Matched Skills Detection
+* Missing Skills Detection
+* Strength Analysis
+* Weakness Analysis
+* Personalized Recommendations
+* Structured JSON Output
 
-### Current AI Stack
+## AI Recommendations
 
-* Gemini 2.5 Flash
+* Resume Improvement Suggestions
+* Skill Development Recommendations
+* Career Growth Suggestions
+* Job Readiness Feedback
+
+## Embeddings & Semantic Search
+
+* Gemini Embedding API Integration
+* Resume Chunking
+* Job Description Chunking
+* Vector Generation
+* Vector Storage in Qdrant
+* Semantic Similarity Search
+* Embedding-Based Retrieval
+
+## RAG Assistant
+
+* Resume Question Answering
+* Job Description Question Answering
+* Semantic Context Retrieval
+* Gemini-Powered Responses
+* Source Attribution
+* Retrieval-Augmented Generation (RAG)
+
+---
+
+# Current AI Stack
+
+* Gemini 3.6 Flash
 * Gemini Embedding API
 * FastAPI
 * PostgreSQL
@@ -68,7 +95,7 @@ This project is being developed as a hands-on learning project to gain practical
 
 ---
 
-## Project Architecture
+# Project Architecture
 
 ```text
 User
@@ -78,27 +105,35 @@ FastAPI Backend
  │
  ├── Authentication Layer
  │
- ├── Resume Upload Service
- │      ├── PDF Parser
- │      └── DOCX Parser
+ ├── Resume Service
+ │     ├── PDF Parser
+ │     └── DOCX Parser
  │
- ├── Job Description Service
+ ├── Job Service
  │
  ├── Analysis Service
- │      └── Gemini API
+ │     └── Gemini 3.6 Flash
+ │
+ ├── Recommendation Service
+ │     └── Gemini 3.6 Flash
  │
  ├── Embedding Service
- │      └── Gemini Embeddings
+ │     └── Gemini Embeddings
+ │
+ ├── RAG Assistant
+ │     ├── Semantic Retrieval
+ │     ├── Context Builder
+ │     └── Gemini Response Generator
  │
  ├── Vector Store
- │      └── Qdrant
+ │     └── Qdrant
  │
  └── PostgreSQL Database
 ```
 
 ---
 
-## Resume Processing Flow
+# Resume Processing Flow
 
 ```text
 Upload Resume
@@ -120,13 +155,16 @@ Store Vectors in Qdrant
       │
       ▼
 Enable Semantic Search
+      │
+      ▼
+RAG Question Answering
 ```
 
 ---
 
-## Tech Stack
+# Tech Stack
 
-### Backend
+## Backend
 
 * Python
 * FastAPI
@@ -134,36 +172,44 @@ Enable Semantic Search
 * Pydantic
 * Alembic
 
-### Database
+## Database
 
 * PostgreSQL
 * Qdrant Vector Database
 
-### AI & GenAI
+## AI & GenAI
 
-* Gemini 2.5 Flash
+* Gemini 3.6 Flash
 * Gemini Embeddings
 * Vector Search
-* RAG Concepts
+* Retrieval-Augmented Generation (RAG)
 
-### Authentication
+## Authentication
 
 * JWT
-* Password Hashing
+* Argon2 Password Hashing
 
-### Dev Tools
+## Dev Tools
 
 * Docker
 * Git
 * GitHub
 * Postman
 * VS Code
+* Pytest
 
 ---
 
-## Setup
+# Setup
 
-### Create Virtual Environment
+## Clone Repository
+
+```bash
+git clone <your-repository-url>
+cd server
+```
+
+## Create Virtual Environment
 
 ```powershell
 python -m venv venv
@@ -175,49 +221,36 @@ pip install -r requirements.txt
 
 ---
 
-### Create .env File
+## Environment Variables
+
+Create a `.env` file:
 
 ```env
 APP_NAME=AI Resume Analyzer
-
 DEBUG=True
 
-DATABASE_URL=postgresql+psycopg2://postgres:your_password@localhost:5432/resume_analyzer
-
-TEST_DATABASE_URL=postgresql+psycopg2://postgres:your_password@localhost:5432/resume_analyzer_test
+DATABASE_URL=postgresql+psycopg2://postgres:password@localhost:5432/resume_analyzer
+TEST_DATABASE_URL=postgresql+psycopg2://postgres:password@localhost:5432/resume_analyzer_test
 
 JWT_SECRET_KEY=your_secret_key
-
 JWT_ALGORITHM=HS256
-
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
 
 UPLOAD_DIR=uploads
-
 MAX_UPLOAD_SIZE_BYTES=10485760
 
-GEMINI_API_KEY=your_gemini_api_key
-
-GEMINI_MODEL=gemini-2.5-flash
-
+GEMINI_API_KEY=my_gemini_api_key
+GEMINI_MODEL=gemini-3.6-flash
 GEMINI_EMBEDDING_MODEL=gemini-embedding-001
 
-EMBEDDING_CHUNK_SIZE_WORDS=500
-
+EMBEDDING_CHUNK_SIZE_WORDS=300
 EMBEDDING_CHUNK_OVERLAP_WORDS=50
+MAX_EMBEDDING_CHUNKS=50
 
 QDRANT_HOST=localhost
-
 QDRANT_PORT=6333
-
 QDRANT_COLLECTION_NAME=resume_embeddings
 ```
-
----
-
-## Start PostgreSQL
-
-Make sure PostgreSQL is running locally.
 
 ---
 
@@ -227,15 +260,15 @@ Make sure PostgreSQL is running locally.
 docker run -p 6333:6333 qdrant/qdrant
 ```
 
-Verify:
+Dashboard:
 
-```bash
+```text
 http://localhost:6333/dashboard
 ```
 
 ---
 
-## Run Migrations
+## Run Database Migrations
 
 ```powershell
 alembic upgrade head
@@ -243,7 +276,7 @@ alembic upgrade head
 
 ---
 
-## Start Server
+## Start FastAPI Server
 
 ```powershell
 uvicorn app.main:app --reload
@@ -251,15 +284,15 @@ uvicorn app.main:app --reload
 
 ---
 
-## API Documentation
+# API Documentation
 
-Swagger UI:
+Swagger UI
 
 ```text
 http://127.0.0.1:8000/docs
 ```
 
-ReDoc:
+ReDoc
 
 ```text
 http://127.0.0.1:8000/redoc
@@ -267,9 +300,9 @@ http://127.0.0.1:8000/redoc
 
 ---
 
-## Main API Endpoints
+# Main API Endpoints
 
-### Authentication
+## Authentication
 
 | Method | Endpoint       |
 | ------ | -------------- |
@@ -277,7 +310,7 @@ http://127.0.0.1:8000/redoc
 | POST   | /auth/login    |
 | GET    | /auth/me       |
 
-### Resume APIs
+## Resume APIs
 
 | Method | Endpoint                  |
 | ------ | ------------------------- |
@@ -286,79 +319,9 @@ http://127.0.0.1:8000/redoc
 | GET    | /resumes/{resume_id}      |
 | GET    | /resumes/{resume_id}/text |
 
-### Job APIs
+## Job APIs
 
-| Method | Endpoint       |
-| ------ | -------------- |
-| POST   | /jobs          |
-| GET    | /jobs          |
-| GET    | /jobs/{job_id} |
-| DELETE | /jobs/{job_id} |
-
-### Analysis APIs
-
-| Method | Endpoint        |
-| ------ | --------------- |
-| POST   | /analysis/match |
-
-### Embedding APIs
-
-| Method | Endpoint           |
-| ------ | ------------------ |
-| POST   | /embeddings/index  |
-| POST   | /embeddings/search |
-
----
-
-## Current Progress
-
-### Completed
-
-* Authentication System
-* Resume Upload System
-* Resume Text Extraction
-* Job Description Management
-* AI Resume Matching
-* Gemini Integration
-* Embedding Generation
-* Qdrant Integration
-* Semantic Search
-
-### Next Steps
-
-* RAG Career Assistant
-* Resume Q&A Chatbot
-* AI Resume Rewriter
-* Interview Preparation Assistant
-* Vector-based Job Recommendations
-* Frontend Integration
-* Docker Compose Setup
-* CI/CD Pipeline
-
----
-
-## Learning Goals
-
-This project is helping me gain hands-on experience with:
-
-* FastAPI Development
-* REST API Design
-* PostgreSQL
-* SQLAlchemy ORM
-* JWT Authentication
-* Generative AI
-* LLM APIs
-* Vector Embeddings
-* Qdrant Vector Database
-* Retrieval-Augmented Generation (RAG)
-* Production Backend Development
-
----
-
-## Author
-
-Karan Raj Singh
-
-Computer Science Engineering Graduate
-
-Currently building Backend + GenAI projects and preparing for SDE-1 / AI Engineer roles.
+| Method | Endpoint |
+| ------ | -------- |
+| POST   | /jobs    |
+| GE     |          |
