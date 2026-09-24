@@ -1,0 +1,84 @@
+/* Design tokens. Dark theme only.
+   Chart + status colours were validated for the dark chart surface (#131722) with the
+   data-viz palette validator: lightness band, chroma, CVD separation and contrast all pass. */
+:root {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --bg: #07080c;
+  --bg-elevated: #0c0f16;
+  --surface: #131722;
+  --surface-2: #181d2a;
+  --surface-3: #1f2535;
+  --surface-glass: rgba(21, 26, 38, 0.66);
+  --surface-glass-strong: rgba(17, 21, 31, 0.86);
+  --border: rgba(148, 163, 196, 0.12);
+  --border-strong: rgba(148, 163, 196, 0.22);
+
+  /* Text */
+  --text: #e9edf5;
+  --text-secondary: #a4aec3;
+  --text-muted: #6f7a91;
+
+  /* Accents: electric blue, cyan, and purple used sparingly */
+  --accent-blue: #4f8cff;
+  --accent-blue-strong: #3a74f0;
+  --accent-cyan: #22d3ee;
+  --accent-purple: #a78bfa;
+  --accent-gradient: linear-gradient(135deg, #4f8cff 0%, #22d3ee 100%);
+  --accent-gradient-ai: linear-gradient(135deg, #4f8cff 0%, #a78bfa 100%);
+  --accent-soft: rgba(79, 140, 255, 0.12);
+  --accent-ring: rgba(79, 140, 255, 0.45);
+
+  /* Status (reserved: always paired with an icon + label) */
+  --status-good: #17a077;
+  --status-warning: #b5820a;
+  --status-critical: #d94a66;
+  --status-good-soft: rgba(23, 160, 119, 0.14);
+  --status-warning-soft: rgba(181, 130, 10, 0.16);
+  --status-critical-soft: rgba(217, 74, 102, 0.14);
+  --status-good-text: #6ee0b8;
+  --status-warning-text: #f0c35a;
+  --status-critical-text: #f590a4;
+
+  /* Charts */
+  --chart-series: #4f8cff;
+  --chart-series-active: #7aa8ff;
+  --chart-grid: rgba(148, 163, 196, 0.1);
+  --chart-axis: rgba(148, 163, 196, 0.24);
+
+  /* Type */
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', monospace;
+
+  /* Shape & depth */
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+  --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.55);
+  --glow-blue: 0 0 0 1px rgba(79, 140, 255, 0.35), 0 8px 28px rgba(79, 140, 255, 0.22);
+
+  /* Layout */
+  --sidebar-width: 256px;
+  --topbar-height: 64px;
+  --page-gutter: 32px;
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --duration: 180ms;
+}
+
+@media (max-width: 1024px) {
+  :root {
+    --page-gutter: 24px;
+  }
+}
+
+@media (max-width: 640px) {
+  :root {
+    --page-gutter: 16px;
+  }
+}
