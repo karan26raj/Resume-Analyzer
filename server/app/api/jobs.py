@@ -1,11 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
+from app.core.config import settings
 from app.core.database import get_db
 from app.models.job import Job
 from app.models.user import User
 from app.schemas.job import JobCreate, JobResponse
+from app.services.indexing import (
+    index_document_in_background,
+    job_to_text,
+    remove_document_from_index,
+)
 
 
 router = APIRouter(
@@ -17,6 +23,7 @@ router = APIRouter(
 @router.post("", response_model=JobResponse, status_code=status.HTTP_201_CREATED)
 def create_job(
     job_data: JobCreate,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -24,6 +31,16 @@ def create_job(
     db.add(job)
     db.commit()
     db.refresh(job)
+
+    if settings.AUTO_INDEX_DOCUMENTS:
+        background_tasks.add_task(
+            index_document_in_background,
+            user_id=current_user.id,
+            document_type="job",
+            document_id=job.id,
+            text=job_to_text(job),
+        )
+
     return job
 
 
@@ -66,5 +83,12 @@ def delete_job(
     db: Session = Depends(get_db),
 ):
     job = _get_owned_job(job_id, current_user.id, db)
+    # Analysis results for this job are removed by the ON DELETE CASCADE foreign key.
     db.delete(job)
     db.commit()
+
+    remove_document_from_index(
+        user_id=current_user.id,
+        document_type="job",
+        document_id=job_id,
+    )

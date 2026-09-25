@@ -12,6 +12,10 @@ class ResumeResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ResumeDetailResponse(ResumeResponse):
+    updated_at: datetime
+
+
 class ResumeUploadResponse(BaseModel):
     message: str
     resume_id: int

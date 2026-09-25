@@ -1,8 +1,14 @@
-import math
+from google.genai import types
 
-from google import genai
-
+from app.ai.gemini import GeminiNotConfiguredError, get_gemini_client
 from app.core.config import settings
+
+
+# Gemini accepts at most 100 texts per batch embedding request.
+EMBEDDING_BATCH_SIZE = 100
+
+DOCUMENT_TASK_TYPE = "RETRIEVAL_DOCUMENT"
+QUERY_TASK_TYPE = "RETRIEVAL_QUERY"
 
 
 class EmbeddingServiceError(Exception):
@@ -37,56 +43,44 @@ def chunk_text(text: str) -> list[str]:
 
 def create_embeddings(
     texts: list[str],
+    task_type: str = DOCUMENT_TASK_TYPE,
 ) -> tuple[list[list[float]], None]:
-
-    if not settings.GEMINI_API_KEY:
-        raise EmbeddingServiceError(
-            "Gemini API is not configured"
-        )
+    """Embed texts in batches. Use QUERY_TASK_TYPE for search queries and DOCUMENT_TASK_TYPE for indexed chunks."""
 
     try:
-        client = genai.Client(
-            api_key=settings.GEMINI_API_KEY
-        )
+        client = get_gemini_client()
+    except GeminiNotConfiguredError as error:
+        raise EmbeddingServiceError(str(error))
 
-        vectors = []
+    vectors: list[list[float]] = []
 
-        for text in texts:
+    try:
+        for start in range(0, len(texts), EMBEDDING_BATCH_SIZE):
+            batch = texts[start:start + EMBEDDING_BATCH_SIZE]
+
             response = client.models.embed_content(
                 model=settings.GEMINI_EMBEDDING_MODEL,
-                contents=text,
+                contents=batch,
+                config=types.EmbedContentConfig(
+                    task_type=task_type,
+                    output_dimensionality=settings.EMBEDDING_DIMENSIONS,
+                ),
             )
 
-            vectors.append(
-                response.embeddings[0].values
+            vectors.extend(
+                embedding.values
+                for embedding in response.embeddings or []
             )
-
-        return vectors, None
 
     except Exception as error:
         raise EmbeddingServiceError(
             f"Gemini embedding failed: {str(error)}"
         )
 
+    if len(vectors) != len(texts):
+        raise EmbeddingServiceError(
+            "Gemini returned incomplete embeddings"
+        )
 
-def cosine_similarity(
-    left: list[float],
-    right: list[float]
-) -> float:
-
-    if len(left) != len(right) or not left:
-        return 0.0
-
-    denominator = (
-        math.sqrt(sum(x * x for x in left))
-        *
-        math.sqrt(sum(x * x for x in right))
-    )
-
-    if denominator == 0:
-        return 0.0
-
-    return (
-        sum(a * b for a, b in zip(left, right))
-        / denominator
-    )
+    # The Gemini API does not report token usage for embeddings.
+    return vectors, None

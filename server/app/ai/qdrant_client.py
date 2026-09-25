@@ -1,29 +1,59 @@
+from functools import lru_cache
+
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams
+from qdrant_client.models import Distance, PayloadSchemaType, VectorParams
 
 from app.core.config import settings
 
-client = QdrantClient(
-    host=settings.QDRANT_HOST,
-    port=settings.QDRANT_PORT
-)
 
-COLLECTION_NAME = settings.QDRANT_COLLECTION_NAME
+PAYLOAD_INDEXES = {
+    "user_id": PayloadSchemaType.INTEGER,
+    "document_type": PayloadSchemaType.KEYWORD,
+    "document_id": PayloadSchemaType.INTEGER,
+    "chunk_index": PayloadSchemaType.INTEGER,
+}
 
 
-def create_collection():
+@lru_cache
+def get_qdrant_client() -> QdrantClient:
+    """Create the Qdrant client lazily so importing the app does not require a running Qdrant."""
+    if settings.QDRANT_LOCATION:
+        return QdrantClient(location=settings.QDRANT_LOCATION)
 
-    collections = [
-        collection.name
-        for collection in client.get_collections().collections
-    ]
+    return QdrantClient(
+        host=settings.QDRANT_HOST,
+        port=settings.QDRANT_PORT
+    )
 
-    if COLLECTION_NAME not in collections:
 
+def get_collection_name() -> str:
+    return settings.QDRANT_COLLECTION_NAME
+
+
+def ensure_collection() -> None:
+    client = get_qdrant_client()
+    collection_name = get_collection_name()
+
+    if not client.collection_exists(collection_name):
         client.create_collection(
-            collection_name=COLLECTION_NAME,
+            collection_name=collection_name,
             vectors_config=VectorParams(
-                size=3072,
+                size=settings.EMBEDDING_DIMENSIONS,
                 distance=Distance.COSINE
             )
+        )
+    else:
+        configured_size = client.get_collection(collection_name).config.params.vectors.size
+        if configured_size != settings.EMBEDDING_DIMENSIONS:
+            raise RuntimeError(
+                f"Qdrant collection '{collection_name}' stores {configured_size}-dimension vectors "
+                f"but EMBEDDING_DIMENSIONS is {settings.EMBEDDING_DIMENSIONS}"
+            )
+
+    # Indexes keep the per-user and per-document filters fast. Creating an existing index is a no-op.
+    for field_name, field_schema in PAYLOAD_INDEXES.items():
+        client.create_payload_index(
+            collection_name=collection_name,
+            field_name=field_name,
+            field_schema=field_schema,
         )

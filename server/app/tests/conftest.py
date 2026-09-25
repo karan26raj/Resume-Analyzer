@@ -5,9 +5,21 @@ from sqlalchemy.orm import sessionmaker
 
 from fastapi.testclient import TestClient
 
-from app.main import app
-from app.core.database import Base, get_db
 from app.core.config import settings
+
+# Tests must never reach real external services: use an in-memory Qdrant,
+# skip background indexing and make any accidental Gemini call fail fast.
+settings.QDRANT_LOCATION = ":memory:"
+settings.AUTO_INDEX_DOCUMENTS = False
+settings.GEMINI_API_KEY = None
+
+from app.ai.gemini import get_gemini_client  # noqa: E402
+from app.ai.qdrant_client import ensure_collection, get_qdrant_client  # noqa: E402
+from app.core.database import Base, get_db  # noqa: E402
+from app.main import app  # noqa: E402
+
+get_qdrant_client.cache_clear()
+get_gemini_client.cache_clear()
 
 TEST_DATABASE_URL = settings.TEST_DATABASE_URL
 
@@ -30,6 +42,17 @@ def setup_database():
 
 
 @pytest.fixture
+def qdrant():
+    """A fresh in-memory Qdrant collection for each test."""
+    get_qdrant_client.cache_clear()
+    ensure_collection()
+
+    yield get_qdrant_client()
+
+    get_qdrant_client.cache_clear()
+
+
+@pytest.fixture
 def db_session():
 
     connection = engine.connect()
@@ -46,7 +69,7 @@ def db_session():
 
 
 @pytest.fixture
-def client(db_session):
+def client(db_session, qdrant):
 
     def override_get_db():
         yield db_session

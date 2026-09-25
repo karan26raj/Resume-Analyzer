@@ -1,15 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
-from app.core.config import settings
 from app.core.database import get_db
 from app.models.analysis_result import AnalysisResult
 from app.models.job import Job
 from app.models.resume import Resume
 from app.models.user import User
 from app.schemas.analysis import MatchRequest, MatchResponse
-from app.services.matching import AnalysisServiceError, generate_match
+from app.services.analysis import run_match_analysis
+from app.services.matching import AnalysisServiceError
 
 
 router = APIRouter(
@@ -18,14 +18,37 @@ router = APIRouter(
 )
 
 
-@router.get("/")
-def get_analysis(
-    current_user: User = Depends(get_current_user)
+@router.get("", response_model=list[MatchResponse])
+def list_analyses(
+    resume_id: int | None = Query(default=None, gt=0),
+    job_id: int | None = Query(default=None, gt=0),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    return {
-        "message": "Authenticated request",
-        "user_id": current_user.id
-    }
+    query = db.query(AnalysisResult).filter(AnalysisResult.user_id == current_user.id)
+
+    if resume_id is not None:
+        query = query.filter(AnalysisResult.resume_id == resume_id)
+    if job_id is not None:
+        query = query.filter(AnalysisResult.job_id == job_id)
+
+    return query.order_by(AnalysisResult.id.desc()).all()
+
+
+@router.get("/{analysis_id}", response_model=MatchResponse)
+def get_analysis(
+    analysis_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    analysis = (
+        db.query(AnalysisResult)
+        .filter(AnalysisResult.id == analysis_id, AnalysisResult.user_id == current_user.id)
+        .first()
+    )
+    if analysis is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found")
+    return analysis
 
 
 @router.post("/match", response_model=MatchResponse, status_code=status.HTTP_201_CREATED)
@@ -56,12 +79,7 @@ def match_resume_to_job(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     try:
-        match, input_tokens, output_tokens = generate_match(
-            resume_text=resume.raw_text,
-            job_title=job.title,
-            company=job.company,
-            job_description=job.description,
-        )
+        result = run_match_analysis(user_id=current_user.id, resume=resume, job=job)
     except AnalysisServiceError as error:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(error))
 
@@ -69,10 +87,7 @@ def match_resume_to_job(
         user_id=current_user.id,
         resume_id=resume.id,
         job_id=job.id,
-        model=settings.GEMINI_MODEL,
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
-        **match.model_dump(),
+        **result,
     )
     db.add(analysis_result)
     db.commit()

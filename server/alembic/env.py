@@ -7,7 +7,7 @@ from alembic import context
 
 from app.core.config import settings
 from app.core.database import Base
-from app.models import AnalysisResult, EmbeddingChunk, Job, Resume, User
+from app.models import AnalysisResult, Job, Resume, User
 
 
 # Alembic Config object

@@ -4,6 +4,7 @@ from sqlalchemy import String, DateTime, ForeignKey,Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
+from app.utils.time import utc_now
 
 
 class Resume(Base):
@@ -34,19 +35,19 @@ class Resume(Base):
         nullable=False
     )
     raw_text: Mapped[str | None] = mapped_column(
-    Text,
-    nullable=True
-)
+        Text,
+        nullable=True
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
+        default=utc_now,
         nullable=False
     )
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=utc_now,
+        onupdate=utc_now,
         nullable=False
     )

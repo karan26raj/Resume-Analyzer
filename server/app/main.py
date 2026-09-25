@@ -1,37 +1,51 @@
-from fastapi import FastAPI
-
-from app.api.auth import router as auth_router
-from app.api.resumes import router as resumes_router
-from app.api.jobs import router as jobs_router
-from app.api.analysis import router as analysis_router
-from app.api.recommendations import router as recommendations_router
-from app.api.embeddings import router as embeddings_router
 from contextlib import asynccontextmanager
-from app.ai.qdrant_client import create_collection
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.ai.qdrant_client import ensure_collection
+from app.api.analysis import router as analysis_router
 from app.api.assistant import router as assistant_router
+from app.api.auth import router as auth_router
+from app.api.embeddings import router as embeddings_router
+from app.api.jobs import router as jobs_router
+from app.api.recommendations import router as recommendations_router
+from app.api.resumes import router as resumes_router
+from app.api.rewrite import router as rewrite_router
+from app.core.config import settings
+
 
 @asynccontextmanager
-async def lifespan(app):
-    create_collection()
+async def lifespan(app: FastAPI):
+    ensure_collection()
     yield
-    
+
+
 app = FastAPI(
-    title="AI Resume Analyzer"
+    title=settings.APP_NAME,
+    debug=settings.DEBUG,
+    lifespan=lifespan,
 )
 
-
-@app.on_event("startup")
-def startup_event():
-    create_collection()
+if settings.CORS_ORIGINS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.CORS_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 
 app.include_router(auth_router)
 app.include_router(resumes_router)
+app.include_router(rewrite_router)
 app.include_router(jobs_router)
 app.include_router(analysis_router)
 app.include_router(recommendations_router)
 app.include_router(embeddings_router)
 app.include_router(assistant_router)
+
 
 @app.get("/")
 def root():

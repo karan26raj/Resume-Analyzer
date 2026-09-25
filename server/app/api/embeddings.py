@@ -17,15 +17,17 @@ from app.schemas.embedding import (
 )
 
 from app.services.embeddings import (
+    QUERY_TASK_TYPE,
     EmbeddingServiceError,
-    chunk_text,
     create_embeddings,
 )
-
-from app.ai.vector_store import (
-    upsert_chunks,
-    search_chunks,
+from app.services.indexing import (
+    EmptyDocumentError,
+    index_document,
+    job_to_text,
 )
+
+from app.ai.vector_store import search_chunks
 
 router = APIRouter(
     prefix="/embeddings",
@@ -38,7 +40,7 @@ router = APIRouter(
     response_model=EmbeddingIndexResponse,
     status_code=status.HTTP_201_CREATED
 )
-def index_document(
+def index_document_endpoint(
     request: EmbeddingIndexRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -57,13 +59,12 @@ def index_document(
 
         if not document:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail="Resume not found"
             )
 
         text = document.raw_text or ""
         document_type = "resume"
-        document_id = document.id
 
     else:
 
@@ -78,50 +79,31 @@ def index_document(
 
         if not document:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail="Job not found"
             )
 
-        text = (
-            f"{document.title}\n"
-            f"{document.company}\n"
-            f"{document.description}"
-        )
-
+        text = job_to_text(document)
         document_type = "job"
-        document_id = document.id
-
-    chunks = chunk_text(text)
-
-    if not chunks:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Document has no text to embed"
-        )
 
     try:
-        vectors, tokens = create_embeddings(chunks)
+        chunk_count, tokens = index_document(
+            user_id=current_user.id,
+            document_type=document_type,
+            document_id=document.id,
+            text=text,
+        )
+
+    except EmptyDocumentError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(error)
+        )
 
     except EmbeddingServiceError as error:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=str(error)
-        )
-
-    if len(vectors) != len(chunks):
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="OpenAI returned incomplete embeddings"
-        )
-
-    try:
-
-        upsert_chunks(
-            user_id=current_user.id,
-            document_type=document_type,
-            document_id=document_id,
-            chunks=chunks,
-            embeddings=vectors
         )
 
     except Exception as error:
@@ -132,9 +114,9 @@ def index_document(
 
     return {
         "document_type": document_type,
-        "document_id": document_id,
-        "chunk_count": len(chunks),
-        "model":settings.GEMINI_EMBEDDING_MODEL,
+        "document_id": document.id,
+        "chunk_count": chunk_count,
+        "model": settings.GEMINI_EMBEDDING_MODEL,
         "input_tokens": tokens,
     }
 
@@ -146,12 +128,12 @@ def index_document(
 def search_embeddings(
     request: EmbeddingSearchRequest,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
 ):
 
     try:
         query_vectors, _ = create_embeddings(
-            [request.query]
+            [request.query],
+            task_type=QUERY_TASK_TYPE,
         )
 
     except EmbeddingServiceError as error:
@@ -165,7 +147,8 @@ def search_embeddings(
         results = search_chunks(
             query_vector=query_vectors[0],
             user_id=current_user.id,
-            limit=request.limit
+            limit=request.limit,
+            document_type=request.document_type,
         )
 
     except Exception as error:
@@ -174,32 +157,23 @@ def search_embeddings(
             detail=f"Vector search failed: {str(error)}"
         )
 
-    response = []
-
-    for hit in results:
-
-        payload = hit.payload
-
-        response.append(
-            {
-                "chunk_id": hash(str(hit.id)) % 1000000,
-                "document_type": payload["document_type"],
-                "resume_id": (
-                    payload["document_id"]
-                    if payload["document_type"] == "resume"
-                    else None
-                ),
-                "job_id": (
-                    payload["document_id"]
-                    if payload["document_type"] == "job"
-                    else None
-                ),
-                "chunk_index": payload["chunk_index"],
-                "content": payload["content"],
-                "score": hit.score,
-                "metadata": payload,
-                "created_at": None,
-            }
-        )
-
-    return response
+    return [
+        {
+            "chunk_id": str(hit.id),
+            "document_type": hit.payload["document_type"],
+            "resume_id": (
+                hit.payload["document_id"]
+                if hit.payload["document_type"] == "resume"
+                else None
+            ),
+            "job_id": (
+                hit.payload["document_id"]
+                if hit.payload["document_type"] == "job"
+                else None
+            ),
+            "chunk_index": hit.payload["chunk_index"],
+            "content": hit.payload["content"],
+            "score": hit.score,
+        }
+        for hit in results
+    ]

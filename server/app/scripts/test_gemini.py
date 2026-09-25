@@ -1,13 +1,11 @@
-from google import genai
-from app.core.config import settings
+"""Manual smoke test for the Gemini connection: python -m app.scripts.test_gemini"""
+from google.genai import types
 
-client = genai.Client(
-    api_key=settings.GEMINI_API_KEY
+from app.ai.gemini import generate_content_with_fallback
+
+response, model_used = generate_content_with_fallback(
+    contents="Hello",
+    config=types.GenerateContentConfig(),
 )
 
-response = client.models.generate_content(
-    model="gemini-3.6-flash",
-    contents="Hello"
-)
-
-print(response.text)
+print(f"[{model_used}] {response.text}")

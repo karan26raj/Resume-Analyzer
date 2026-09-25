@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
@@ -30,12 +29,10 @@ class EmbeddingSearchRequest(BaseModel):
 
 
 class EmbeddingSearchResult(BaseModel):
-    chunk_id: int
+    chunk_id: str
     document_type: str
     resume_id: int | None
     job_id: int | None
     chunk_index: int
     content: str
     score: float
-    metadata: dict
-    created_at: datetime | None=None

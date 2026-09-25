@@ -227,7 +227,7 @@ Create a `.env` file:
 
 ```env
 APP_NAME=AI Resume Analyzer
-DEBUG=True
+DEBUG=False
 
 DATABASE_URL=postgresql+psycopg2://postgres:password@localhost:5432/resume_analyzer
 TEST_DATABASE_URL=postgresql+psycopg2://postgres:password@localhost:5432/resume_analyzer_test
@@ -319,9 +319,90 @@ http://127.0.0.1:8000/redoc
 | GET    | /resumes/{resume_id}      |
 | GET    | /resumes/{resume_id}/text |
 
+| DELETE | /resumes/{resume_id}      |
+
+Uploading a resume automatically indexes it for semantic search in the background (`AUTO_INDEX_DOCUMENTS`). Deleting a resume also removes its stored file, analyses and vectors.
+
 ## Job APIs
 
-| Method | Endpoint |
-| ------ | -------- |
-| POST   | /jobs    |
-| GE     |          |
+| Method | Endpoint       |
+| ------ | -------------- |
+| POST   | /jobs          |
+| GET    | /jobs          |
+| GET    | /jobs/{job_id} |
+| DELETE | /jobs/{job_id} |
+
+Creating a job indexes it automatically; deleting a job removes its analyses and vectors.
+
+## Analysis APIs
+
+| Method | Endpoint                 | Notes                                        |
+| ------ | ------------------------ | -------------------------------------------- |
+| POST   | /analysis/match          | Match a resume against a job with Gemini     |
+| GET    | /analysis                | History, optional `resume_id` / `job_id`     |
+| GET    | /analysis/{analysis_id}  | A single stored analysis                     |
+
+### How a match is scored
+
+1. **Retrieval (RAG):** the job description is embedded and the most similar passages of the resume are pulled from Qdrant (the resume is indexed on the fly if needed).
+2. **Evidence-based assessment:** Gemini lists the job's requirements (skill / experience / education, required / preferred) and judges each one as met, partial or missing, quoting the resume verbatim as evidence.
+3. **Verification:** every quote is checked against the resume. An unverifiable "met" becomes "partial" and an unverifiable "partial" becomes "missing".
+4. **Scoring in code:** skills 40%, experience 25%, education 10%, semantic similarity 25%. Parts that can't be measured are re-weighted. The response includes `requirements`, `score_breakdown`, `semantic_similarity` and `retrieved_evidence`, so every score is explainable.
+
+## Recommendations API
+
+| Method | Endpoint              | Notes                                                                 |
+| ------ | --------------------- | --------------------------------------------------------------------- |
+| GET    | /recommendations      | Most frequent missing skills and latest recommendations               |
+| GET    | /recommendations/jobs | Your saved jobs ranked by semantic similarity to a resume (`resume_id`, `limit`) |
+
+## Resume Rewriting API
+
+| Method | Endpoint         | Notes                                                                                   |
+| ------ | ---------------- | --------------------------------------------------------------------------------------- |
+| POST   | /resumes/rewrite | `{resume_id, job_id}` → rewrites of existing resume lines tailored to the job           |
+
+Rewrites are validated in code: the original line must exist in the resume, and a rewrite that adds any technology, number or name not already in the resume is returned under `rejected` with the reason and the offending terms.
+
+## Embeddings & Assistant APIs
+
+| Method | Endpoint           | Notes                                                               |
+| ------ | ------------------ | ------------------------------------------------------------------- |
+| POST   | /embeddings/index  | (Re-)index a resume or job manually                                 |
+| POST   | /embeddings/search | Semantic search, optional `document_type` filter                    |
+| POST   | /assistant/ask     | RAG Q&A, optionally scoped with `resume_id` and/or `job_id`         |
+
+---
+
+# Local Infrastructure
+
+`docker-compose.yml` starts PostgreSQL and Qdrant:
+
+```bash
+docker compose up -d
+```
+
+---
+
+# Running Tests
+
+Tests use the `TEST_DATABASE_URL` database and an in-memory Qdrant. Gemini is never called.
+
+```powershell
+pytest
+```
+
+---
+
+# Optional Settings
+
+```env
+CORS_ORIGINS=["http://localhost:5173"]
+AUTO_INDEX_DOCUMENTS=True
+EMBEDDING_DIMENSIONS=3072
+GEMINI_TIMEOUT_SECONDS=60
+GEMINI_MAX_RETRIES=2
+GEMINI_FALLBACK_MODELS=["gemini-3.6-flash","gemini-3.8-flash","gemini-3.5-flash-lite","gemini-flash-lite-latest"]
+```
+
+If `GEMINI_MODEL` is overloaded (503), rate limited (429) or retired (404), match analysis and the assistant automatically try each fallback model in order. Each stored analysis records the model that actually produced it.

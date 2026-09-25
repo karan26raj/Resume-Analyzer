@@ -1,10 +1,11 @@
+import logging
 import os
 from pathlib import Path
 import tempfile
 import uuid
 import zipfile
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
@@ -12,8 +13,11 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.models.resume import Resume
 from app.models.user import User
-from app.schemas.resume import ResumeResponse, ResumeUploadResponse
+from app.schemas.resume import ResumeDetailResponse, ResumeResponse, ResumeUploadResponse
+from app.services.indexing import index_document_in_background, remove_document_from_index
 from app.utils.pdf_parser import extract_text_from_docx, extract_text_from_pdf
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/resumes",
@@ -22,6 +26,18 @@ router = APIRouter(
 
 
 ALLOWED_EXTENSIONS = {".pdf", ".docx"}
+
+
+def _get_owned_resume(resume_id: int, user_id: int, db: Session) -> Resume:
+    resume = (
+        db.query(Resume).filter(Resume.id == resume_id, Resume.user_id == user_id).first()
+    )
+    if resume is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume not found"
+        )
+    return resume
 
 
 def _validate_file_contents(file_path: Path, file_extension: str) -> None:
@@ -68,30 +84,42 @@ def get_resumes(
         for resume in resumes
     ]
 
-@router.get("/{resume_id}")
+@router.get("/{resume_id}", response_model=ResumeDetailResponse)
 def get_resume(
     resume_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    resume = (
-        db.query(Resume).filter(Resume.id == resume_id,Resume.user_id == current_user.id).first()
+    return _get_owned_resume(resume_id, current_user.id, db)
+
+
+@router.delete("/{resume_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_resume(
+    resume_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    resume = _get_owned_resume(resume_id, current_user.id, db)
+    file_path = Path(resume.file_path)
+
+    # Analysis results for this resume are removed by the ON DELETE CASCADE foreign key.
+    db.delete(resume)
+    db.commit()
+
+    # Only ever remove files that live inside the upload directory.
+    upload_dir = Path(settings.UPLOAD_DIR).resolve()
+    if file_path.resolve().is_relative_to(upload_dir):
+        try:
+            file_path.unlink(missing_ok=True)
+        except OSError:
+            logger.exception("Failed to delete stored file for resume %s", resume_id)
+
+    remove_document_from_index(
+        user_id=current_user.id,
+        document_type="resume",
+        document_id=resume_id,
     )
 
-    if resume is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Resume not found"
-        )
-
-    return {
-        "id": resume.id,
-        "filename": resume.filename,
-        "file_type": resume.file_type,
-        "file_path": resume.file_path,
-        "created_at": resume.created_at,
-        "updated_at": resume.updated_at
-    }
 
 @router.post(
     "/upload",
@@ -99,6 +127,7 @@ def get_resume(
     status_code=status.HTTP_201_CREATED,
 )
 def upload_resume(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -175,6 +204,15 @@ def upload_resume(
         if final_path and final_path.exists() and not database_record_created:
             final_path.unlink()
 
+    if settings.AUTO_INDEX_DOCUMENTS and raw_text:
+        background_tasks.add_task(
+            index_document_in_background,
+            user_id=current_user.id,
+            document_type="resume",
+            document_id=resume.id,
+            text=raw_text,
+        )
+
     return {
         "message": "Resume uploaded successfully",
         "resume_id": resume.id,
@@ -188,20 +226,7 @@ def get_resume_text(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    resume = (
-        db.query(Resume)
-        .filter(
-            Resume.id == resume_id,
-            Resume.user_id == current_user.id
-        )
-        .first()
-    )
-
-    if resume is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Resume not found"
-        )
+    resume = _get_owned_resume(resume_id, current_user.id, db)
 
     return {
         "resume_id": resume.id,
