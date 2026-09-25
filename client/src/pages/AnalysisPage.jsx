@@ -9,6 +9,8 @@ import {
   FileText,
   History,
   Lightbulb,
+  PenLine,
+  RotateCcw,
   Sparkles,
   ThumbsUp,
   X,
@@ -21,6 +23,7 @@ import { SelectField } from '../components/ui/Field'
 import { ScoreRing } from '../components/ui/ScoreRing'
 import { EmptyState, ErrorState, InlineError, Skeleton, Spinner } from '../components/ui/States'
 import { ChartIllustration } from '../components/ui/Illustrations'
+import { RequirementsList, RetrievedEvidence, ScoreBreakdown } from '../components/analysis/ExplainableAnalysis'
 import { formatDateTime, formatNumber, formatRelative, scoreBand } from '../utils/format'
 
 function InsightSection({ icon: Icon, title, items, tone, defaultOpen = true, emptyText }) {
@@ -73,8 +76,10 @@ function SkillCoverage({ matched, missing }) {
   )
 }
 
-function AnalysisResult({ analysis, resumeName, job }) {
+function AnalysisResult({ analysis, resumeName, job, onRerun, rerunDisabled }) {
   const band = scoreBand(analysis.match_score)
+  // Analyses created before evidence-based scoring have no requirements or breakdown.
+  const explainable = Boolean(analysis.score_breakdown && analysis.requirements)
   return (
     <div className="analysis-result">
       <section className={`card score-hero score-hero--${band.key}`}>
@@ -113,8 +118,33 @@ function AnalysisResult({ analysis, resumeName, job }) {
               <dd>{formatDateTime(analysis.created_at)}</dd>
             </div>
           </dl>
+          <div className="score-hero__actions">
+            <Link
+              to={`/rewrite?resume=${analysis.resume_id}&job=${analysis.job_id}`}
+              className="btn btn--secondary btn--sm"
+            >
+              <PenLine size={15} aria-hidden="true" /> Tailor resume for this job
+            </Link>
+          </div>
         </div>
       </section>
+
+      {explainable ? (
+        <>
+          <ScoreBreakdown breakdown={analysis.score_breakdown} score={analysis.match_score} />
+          <RequirementsList requirements={analysis.requirements} />
+        </>
+      ) : (
+        <p className="notice notice--info notice--row">
+          <span>
+            This analysis was created before evidence-based scoring, so it has no score breakdown or requirement
+            evidence. Run it again to get them.
+          </span>
+          <button className="btn btn--secondary btn--sm" onClick={onRerun} disabled={rerunDisabled}>
+            <RotateCcw size={15} aria-hidden="true" /> Run again
+          </button>
+        </p>
+      )}
 
       <section className="skills-grid">
         <article className="card">
@@ -179,6 +209,9 @@ function AnalysisResult({ analysis, resumeName, job }) {
           items={analysis.recommendations}
           emptyText="No recommendations were returned."
         />
+        {analysis.retrieved_evidence && (
+          <RetrievedEvidence passages={analysis.retrieved_evidence} similarity={analysis.semantic_similarity} />
+        )}
       </section>
     </div>
   )
@@ -214,13 +247,11 @@ export function AnalysisPage() {
     if (jobs.data && jobId && !jobs.data.some((job) => String(job.id) === jobId)) setJobId('')
   }, [jobs.data, jobId])
 
-  const run = async (event) => {
-    event.preventDefault()
-    if (!resumeId || !jobId) return
+  const analyze = async (targetResumeId, targetJobId) => {
     setRunning(true)
     setRunError(null)
     try {
-      const result = await analysisApi.match(Number(resumeId), Number(jobId))
+      const result = await analysisApi.match(Number(targetResumeId), Number(targetJobId))
       history.setData((current) => [result, ...(current || []).filter((item) => item.id !== result.id)])
       setParams({ id: String(result.id) })
       toast.success(`Analysis complete — score ${result.match_score}`)
@@ -229,6 +260,17 @@ export function AnalysisPage() {
     } finally {
       setRunning(false)
     }
+  }
+
+  const run = (event) => {
+    event.preventDefault()
+    if (resumeId && jobId) analyze(resumeId, jobId)
+  }
+
+  const rerun = (analysis) => {
+    setResumeId(String(analysis.resume_id))
+    setJobId(String(analysis.job_id))
+    analyze(analysis.resume_id, analysis.job_id)
   }
 
   const listsLoading = resumes.loading || jobs.loading
@@ -298,8 +340,9 @@ export function AnalysisPage() {
               </div>
               <h2>Analyzing with Gemini</h2>
               <p className="text-secondary">
-                Comparing the resume with the job description. This usually takes 5–30 seconds, longer if the
-                primary model is busy and a fallback model is used.
+                Retrieving the most relevant resume passages, checking every job requirement against them and
+                verifying the quoted evidence. This usually takes 5–30 seconds, longer if the primary model is busy
+                and a fallback model is used.
               </p>
             </section>
           ) : history.loading ? (
@@ -316,6 +359,8 @@ export function AnalysisPage() {
               analysis={selected}
               resumeName={resumeNames.get(selected.resume_id) || `Resume #${selected.resume_id}`}
               job={jobsById.get(selected.job_id)}
+              onRerun={() => rerun(selected)}
+              rerunDisabled={running}
             />
           ) : (
             <div className="card">

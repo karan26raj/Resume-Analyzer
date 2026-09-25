@@ -57,11 +57,10 @@ export function AuthPage({ mode }) {
 
   return (
     <div className="auth">
-      <div className="app-shell__glow" aria-hidden="true" />
       <section className="auth__intro">
         <Brand />
         <h1>
-          Career intelligence, <span className="gradient-text">grounded in your documents.</span>
+          Career intelligence, <span className="accent-text">grounded in your documents.</span>
         </h1>
         <p>Upload resumes, save job descriptions and get evidence-based AI match analysis in seconds.</p>
         <ul className="auth__features">

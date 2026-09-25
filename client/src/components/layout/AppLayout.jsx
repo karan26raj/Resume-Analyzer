@@ -14,7 +14,6 @@ export function AppLayout() {
 
   return (
     <div className="app-shell">
-      <div className="app-shell__glow" aria-hidden="true" />
       <Sidebar open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
       <div className="app-shell__main">
         <Topbar onOpenNav={() => setMobileNavOpen(true)} />

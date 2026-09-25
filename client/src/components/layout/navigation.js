@@ -4,8 +4,10 @@ import {
   BriefcaseBusiness,
   FileText,
   LayoutDashboard,
+  PenLine,
   ScanSearch,
   Settings,
+  Target,
 } from 'lucide-react'
 
 export const NAV_ITEMS = [
@@ -13,6 +15,8 @@ export const NAV_ITEMS = [
   { to: '/resumes', label: 'Resumes', icon: FileText },
   { to: '/jobs', label: 'Jobs', icon: BriefcaseBusiness },
   { to: '/analysis', label: 'Analysis', icon: BarChart3 },
+  { to: '/matches', label: 'Job Matches', icon: Target },
+  { to: '/rewrite', label: 'Resume Rewrite', icon: PenLine },
   { to: '/search', label: 'Semantic Search', icon: ScanSearch },
   { to: '/assistant', label: 'AI Assistant', icon: Bot },
   { to: '/settings', label: 'Settings', icon: Settings },

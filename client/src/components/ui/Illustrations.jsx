@@ -12,8 +12,8 @@ function Defs({ id }) {
   return (
     <defs>
       <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stopColor="var(--accent-blue)" />
-        <stop offset="1" stopColor="var(--accent-cyan)" />
+        <stop offset="0" stopColor="var(--accent)" />
+        <stop offset="1" stopColor="var(--accent)" />
       </linearGradient>
     </defs>
   )

@@ -10,6 +10,7 @@ import {
   RefreshCw,
   Search,
   Sparkles,
+  Target,
   Trash2,
   X,
   XCircle,
@@ -204,6 +205,14 @@ export function ResumesPage() {
         title="Analyze against a job"
       >
         <Sparkles size={16} />
+      </button>
+      <button
+        className="icon-button"
+        onClick={() => navigate(`/matches?resume=${resume.id}`)}
+        aria-label={`Find job matches for ${resume.filename}`}
+        title="Rank saved jobs for this resume"
+      >
+        <Target size={16} />
       </button>
       <button
         className="icon-button icon-button--danger"

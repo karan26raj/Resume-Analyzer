@@ -8,6 +8,7 @@ import {
   Database,
   FileText,
   Sparkles,
+  Target,
   Upload,
 } from 'lucide-react'
 import { analysisApi, jobsApi, recommendationsApi, resumesApi } from '../api/services'
@@ -19,7 +20,7 @@ import { ChartIllustration, SearchIllustration } from '../components/ui/Illustra
 import { ScoreTrendChart } from '../components/charts/ScoreTrendChart'
 import { SkillGapChart } from '../components/charts/SkillGapChart'
 import { countAnsweredQuestions } from '../utils/chatHistory'
-import { formatNumber, formatRelative, parseApiDate } from '../utils/format'
+import { formatNumber, formatRelative, parseApiDate, scoreBand } from '../utils/format'
 
 function StatCard({ icon: Icon, label, value, loading, error, note, to, accent }) {
   const content = (
@@ -60,6 +61,12 @@ export function DashboardPage() {
   const jobs = useApi((signal) => jobsApi.list({ signal }))
   const analyses = useApi((signal) => analysisApi.list(undefined, { signal }))
   const insights = useApi((signal) => recommendationsApi.get(8, { signal }))
+  // Ranking needs a resume and at least one job; the API defaults to the newest resume.
+  const canRank = Boolean(resumes.data?.length && jobs.data?.length)
+  const topMatches = useApi(
+    (signal) => (canRank ? recommendationsApi.jobs({ limit: 3 }, { signal }) : Promise.resolve(null)),
+    [canRank],
+  )
 
   const answered = user ? countAnsweredQuestions(user.id) : 0
 
@@ -314,6 +321,63 @@ export function DashboardPage() {
                       <span className="activity-item__meta">
                         {item.detail && <span>{item.detail}</span>}
                         <time dateTime={item.parsed.toISOString()}>{formatRelative(item.parsed)}</time>
+                      </span>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </article>
+
+        <article className="card">
+          <header className="card__header">
+            <div>
+              <h2>Best job matches</h2>
+              <p className="text-secondary">
+                {canRank && resumes.data ? `Saved jobs closest to ${resumes.data[0].filename}.` : 'Saved jobs closest to your newest resume.'}
+              </p>
+            </div>
+            {canRank && (
+              <Link to="/matches" className="link-text">
+                View all
+              </Link>
+            )}
+          </header>
+          {resumes.loading || jobs.loading || (canRank && !topMatches.data && !topMatches.error) ? (
+            <div className="stack-sm">
+              {Array.from({ length: 3 }, (_, index) => (
+                <Skeleton key={index} height={44} />
+              ))}
+            </div>
+          ) : resumes.error || jobs.error ? (
+            <ErrorState compact error={resumes.error || jobs.error} />
+          ) : !canRank ? (
+            <EmptyState
+              compact
+              title="Nothing to rank yet"
+              description="Upload a resume and save a job description to see which jobs fit you best."
+            />
+          ) : topMatches.error ? (
+            <ErrorState compact error={topMatches.error} onRetry={topMatches.reload} />
+          ) : !topMatches.data.recommendations.length ? (
+            <EmptyState compact title="No matches yet" description="Your saved jobs could not be ranked right now." />
+          ) : (
+            <ul className="activity-list">
+              {topMatches.data.recommendations.map((match) => {
+                const band = scoreBand(match.match_score)
+                return (
+                  <li key={match.job_id}>
+                    <Link to={`/matches?resume=${topMatches.data.resume_id}`} className="activity-item">
+                      <span className="activity-item__icon activity-item__icon--job">
+                        <Target size={16} aria-hidden="true" />
+                      </span>
+                      <span className="activity-item__body">
+                        <span className="activity-item__verb">{match.company}</span>
+                        <span className="activity-item__title">{match.title}</span>
+                      </span>
+                      <span className={`score-badge score-badge--${band.key}`} title={band.label}>
+                        {match.match_score}
                       </span>
                     </Link>
                   </li>

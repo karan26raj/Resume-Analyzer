@@ -21,6 +21,9 @@ export const resumesApi = {
   text: (id, options) => apiRequest(`/resumes/${id}/text`, options),
   remove: (id) => apiRequest(`/resumes/${id}`, { method: 'DELETE' }),
   upload: (file, onProgress) => uploadFile('/resumes/upload', file, { onProgress }),
+  // Truthful, job-tailored rewrites of existing resume lines (not stored by the API).
+  rewrite: (resumeId, jobId) =>
+    apiRequest('/resumes/rewrite', { method: 'POST', body: { resume_id: resumeId, job_id: jobId } }),
 }
 
 export const jobsApi = {
@@ -39,6 +42,9 @@ export const analysisApi = {
 
 export const recommendationsApi = {
   get: (limit = 8, options) => apiRequest('/recommendations', { ...options, query: { limit } }),
+  // Saved jobs ranked by semantic similarity to a resume (defaults to the newest resume).
+  jobs: ({ resumeId, limit = 10 } = {}, options) =>
+    apiRequest('/recommendations/jobs', { ...options, query: { resume_id: resumeId || undefined, limit } }),
 }
 
 export const embeddingsApi = {

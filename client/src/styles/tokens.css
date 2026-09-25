@@ -1,65 +1,69 @@
-/* Design tokens. Dark theme only.
-   Chart + status colours were validated for the dark chart surface (#131722) with the
-   data-viz palette validator: lightness band, chroma, CVD separation and contrast all pass. */
+/* Design tokens. Dark theme only: neutral black surfaces with a single orange accent.
+   Orange is the only brand colour. Status colours (green / yellow / red) are reserved for
+   match results and are always paired with an icon + label. Warning is deliberately yellow,
+   not amber, so it never reads as the brand orange. */
 :root {
   color-scheme: dark;
 
   /* Surfaces */
-  --bg: #07080c;
-  --bg-elevated: #0c0f16;
-  --surface: #131722;
-  --surface-2: #181d2a;
-  --surface-3: #1f2535;
-  --surface-glass: rgba(21, 26, 38, 0.66);
-  --surface-glass-strong: rgba(17, 21, 31, 0.86);
-  --border: rgba(148, 163, 196, 0.12);
-  --border-strong: rgba(148, 163, 196, 0.22);
+  --bg: #0a0a0a;
+  --bg-elevated: #0f0f0f;
+  --surface: #141414;
+  --surface-2: #1a1a1a;
+  --surface-3: #232323;
+  --surface-input: #0f0f0f;
+  --overlay: rgba(0, 0, 0, 0.72);
+  --border: #262626;
+  --border-strong: #363636;
+  --hover: rgba(255, 255, 255, 0.05);
 
   /* Text */
-  --text: #e9edf5;
-  --text-secondary: #a4aec3;
-  --text-muted: #6f7a91;
+  --text: #f5f5f4;
+  --text-secondary: #a8a29e;
+  --text-muted: #78716c;
 
-  /* Accents: electric blue, cyan, and purple used sparingly */
-  --accent-blue: #4f8cff;
-  --accent-blue-strong: #3a74f0;
-  --accent-cyan: #22d3ee;
-  --accent-purple: #a78bfa;
-  --accent-gradient: linear-gradient(135deg, #4f8cff 0%, #22d3ee 100%);
-  --accent-gradient-ai: linear-gradient(135deg, #4f8cff 0%, #a78bfa 100%);
-  --accent-soft: rgba(79, 140, 255, 0.12);
-  --accent-ring: rgba(79, 140, 255, 0.45);
+  /* Accent */
+  --accent: #f97316;
+  --accent-hover: #fb8a3c;
+  --accent-pressed: #ea580c;
+  --accent-text: #fdba74;
+  --accent-contrast: #0a0a0a; /* text on a solid orange background */
+  --accent-soft: rgba(249, 115, 22, 0.1);
+  --accent-border: rgba(249, 115, 22, 0.35);
+  --accent-ring: rgba(249, 115, 22, 0.28);
 
   /* Status (reserved: always paired with an icon + label) */
-  --status-good: #17a077;
-  --status-warning: #b5820a;
-  --status-critical: #d94a66;
-  --status-good-soft: rgba(23, 160, 119, 0.14);
-  --status-warning-soft: rgba(181, 130, 10, 0.16);
-  --status-critical-soft: rgba(217, 74, 102, 0.14);
-  --status-good-text: #6ee0b8;
-  --status-warning-text: #f0c35a;
-  --status-critical-text: #f590a4;
+  --status-good: #16a34a;
+  --status-warning: #ca8a04;
+  --status-critical: #dc2626;
+  --status-good-soft: rgba(22, 163, 74, 0.12);
+  --status-warning-soft: rgba(202, 138, 4, 0.14);
+  --status-critical-soft: rgba(220, 38, 38, 0.12);
+  --status-good-text: #4ade80;
+  --status-warning-text: #facc15;
+  --status-critical-text: #f87171;
+  --status-good-border: rgba(22, 163, 74, 0.35);
+  --status-warning-border: rgba(202, 138, 4, 0.35);
+  --status-critical-border: rgba(220, 38, 38, 0.35);
 
   /* Charts */
-  --chart-series: #4f8cff;
-  --chart-series-active: #7aa8ff;
-  --chart-grid: rgba(148, 163, 196, 0.1);
-  --chart-axis: rgba(148, 163, 196, 0.24);
+  --chart-series: #f97316;
+  --chart-series-active: #fdba74;
+  --chart-grid: rgba(255, 255, 255, 0.06);
+  --chart-axis: rgba(255, 255, 255, 0.16);
 
   /* Type */
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', monospace;
 
-  /* Shape & depth */
-  --radius-sm: 8px;
-  --radius: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 1px 0 rgba(255, 255, 255, 0.03) inset;
-  --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.55);
-  --glow-blue: 0 0 0 1px rgba(79, 140, 255, 0.35), 0 8px 28px rgba(79, 140, 255, 0.22);
+  /* Shape & depth: flat, borders do the work */
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6);
 
   /* Layout */
   --sidebar-width: 256px;
@@ -68,7 +72,7 @@
 
   /* Motion */
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --duration: 180ms;
+  --duration: 150ms;
 }
 
 @media (max-width: 1024px) {
