@@ -370,7 +370,8 @@ def test_redis_is_skipped_for_a_while_after_a_failure(monkeypatch):
     assert cache.get_value("key") == "value"
 
 
-def test_redis_can_be_disabled(client):
+def test_redis_can_be_disabled(client, monkeypatch):
+    monkeypatch.setattr(settings, "REDIS_URL", "")
     redis_module.set_redis_client(None)
 
     assert client.get("/health").json() == {"status": "healthy", "redis": "disabled", "worker": "disabled"}
@@ -383,3 +384,19 @@ def test_empty_redis_url_disables_redis(monkeypatch, disabled):
     monkeypatch.setattr(settings, "REDIS_URL", disabled)
 
     assert redis_module._create_client() is None
+
+
+@pytest.mark.parametrize(
+    "bad_url",
+    ["https://example.upstash.io", "redis-cli --tls -u redis://default:p@example.upstash.io:6379"],
+)
+def test_malformed_redis_url_disables_redis_instead_of_crashing(client, monkeypatch, caplog, bad_url):
+    monkeypatch.setattr(settings, "REDIS_URL", bad_url)
+    monkeypatch.setattr(redis_module, "_initialized", False)
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json()["redis"] == "unavailable"
+    assert "REDIS_URL is not a valid Redis URL" in caplog.text
+    assert cache.get_value("anything") is None

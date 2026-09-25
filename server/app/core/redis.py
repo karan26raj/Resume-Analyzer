@@ -22,12 +22,16 @@ _skip_until = 0.0
 def _create_client() -> redis.Redis | None:
     if not settings.REDIS_URL:
         return None
-    return redis.Redis.from_url(
-        settings.REDIS_URL,
-        decode_responses=True,
-        socket_connect_timeout=settings.REDIS_TIMEOUT_SECONDS,
-        socket_timeout=settings.REDIS_TIMEOUT_SECONDS,
-    )
+    try:
+        return redis.Redis.from_url(
+            settings.REDIS_URL,
+            decode_responses=True,
+            socket_connect_timeout=settings.REDIS_TIMEOUT_SECONDS,
+            socket_timeout=settings.REDIS_TIMEOUT_SECONDS,
+        )
+    except ValueError as error:
+        logger.error("REDIS_URL is not a valid Redis URL (%s); continuing without Redis", error)
+        return None
 
 
 def get_redis() -> redis.Redis | None:
@@ -67,5 +71,5 @@ def run(operation: Callable[[redis.Redis], T], default: T) -> T:
 
 def redis_status() -> str:
     if get_redis() is None:
-        return "disabled"
+        return "unavailable" if settings.REDIS_URL else "disabled"
     return "connected" if run(lambda client: client.ping(), False) else "unavailable"
