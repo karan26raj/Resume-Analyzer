@@ -150,3 +150,30 @@ def test_uploads_without_file_storage(client, db_session, tmp_path, monkeypatch)
     assert client.get(f"/resumes/{resume.id}/text", headers=headers).json()["text"] == "Python developer"
     assert client.delete(f"/resumes/{resume.id}", headers=headers).status_code == 204
     assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize(
+    "given",
+    [
+        '["https://resume-analyzer.vercel.app"]',
+        "https://resume-analyzer.vercel.app",
+        " https://resume-analyzer.vercel.app/ ",
+        '["https://resume-analyzer.vercel.app/"]',
+    ],
+)
+def test_cors_origins_accept_json_or_plain_text(monkeypatch, given):
+    monkeypatch.setenv("CORS_ORIGINS", given)
+
+    assert make().CORS_ORIGINS == ["https://resume-analyzer.vercel.app"]
+
+
+def test_cors_origins_accept_a_comma_separated_list(monkeypatch):
+    monkeypatch.setenv("CORS_ORIGINS", "https://a.vercel.app, https://b.example.com/")
+
+    assert make().CORS_ORIGINS == ["https://a.vercel.app", "https://b.example.com"]
+
+
+def test_cors_origins_from_an_empty_variable(monkeypatch):
+    monkeypatch.setenv("CORS_ORIGINS", "")
+
+    assert make().CORS_ORIGINS == []

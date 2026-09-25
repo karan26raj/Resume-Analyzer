@@ -1,7 +1,8 @@
-from typing import Literal
+import json
+from typing import Annotated, Literal
 
 from pydantic import field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 MIN_PRODUCTION_SECRET_LENGTH = 32
@@ -22,7 +23,7 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
-    CORS_ORIGINS: list[str] = []
+    CORS_ORIGINS: Annotated[list[str], NoDecode] = []
     CORS_ORIGIN_REGEX: str | None = None
 
     TRUSTED_PROXY_COUNT: int = 0
@@ -100,6 +101,16 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     INDEX_TASK_MAX_RETRIES: int = 3
     INDEX_TASK_RETRY_BASE_SECONDS: int = 10
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_origins(cls, value):
+        if isinstance(value, str):
+            text = value.strip()
+            value = json.loads(text) if text.startswith("[") else text.split(",")
+        if isinstance(value, list):
+            return [str(origin).strip().rstrip("/") for origin in value if str(origin).strip()]
+        return value
 
     @field_validator("DATABASE_URL", "TEST_DATABASE_URL", mode="before")
     @classmethod
