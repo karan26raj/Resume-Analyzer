@@ -3,12 +3,15 @@ services:
     name: resume-analyzer-api
     runtime: docker
     plan: free
-    rootDir: server
     dockerfilePath: ./server/Dockerfile
     dockerContext: ./server
     dockerCommand: /app/render-start.sh
     healthCheckPath: /health/live
     autoDeploy: true
+    buildFilter:
+      paths:
+        - server/**
+        - render.yaml
     envVars:
       - key: ENVIRONMENT
         value: production

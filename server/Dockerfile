@@ -19,7 +19,8 @@ COPY alembic ./alembic
 COPY app ./app
 
 # Start command for hosts that give the port in $PORT (Render): migrate, then serve.
-COPY --chmod=755 render-start.sh ./
+COPY render-start.sh ./
+RUN chmod 755 render-start.sh
 
 # A new named volume copies this directory's ownership, so uploads stay writable for the app user.
 RUN mkdir -p /app/uploads && chown app:app /app/uploads
