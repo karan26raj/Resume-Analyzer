@@ -7,7 +7,6 @@ export function AppLayout() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const location = useLocation()
 
-  // Close the mobile drawer after navigating.
   useEffect(() => {
     setMobileNavOpen(false)
   }, [location.pathname])

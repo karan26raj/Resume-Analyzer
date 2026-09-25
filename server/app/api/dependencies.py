@@ -32,9 +32,10 @@ def get_current_user(
             algorithms=[settings.JWT_ALGORITHM]
         )
 
-        user_id = payload.get("sub")
+        subject = payload.get("sub")
 
-        if user_id is None:
+        # Only tokens we issued carry a numeric user ID; anything else is invalid, not a server error.
+        if not isinstance(subject, str) or not subject.isdigit():
             raise credentials_exception
 
     except JWTError:
@@ -42,7 +43,7 @@ def get_current_user(
 
     user = (
         db.query(User)
-        .filter(User.id == int(user_id))
+        .filter(User.id == int(subject))
         .first()
     )
 

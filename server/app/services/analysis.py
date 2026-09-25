@@ -1,10 +1,5 @@
-"""Match analysis pipeline (phases 9, 10 and 13).
-
-    resume + job
-        -> retrieve the most relevant resume passages from Qdrant (RAG)
-        -> Gemini assesses each job requirement with verbatim evidence
-        -> evidence is verified against the resume; unsupported claims are downgraded
-        -> the score is computed in code from requirements + semantic similarity
+"""Match analysis: retrieve resume passages, have Gemini assess each requirement with a verbatim
+quote, verify the quotes against the resume, then compute the score in code.
 """
 import logging
 

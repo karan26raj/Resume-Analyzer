@@ -1,4 +1,3 @@
-// Small line illustrations for empty states. Decorative only (aria-hidden).
 const common = {
   width: 120,
   height: 96,

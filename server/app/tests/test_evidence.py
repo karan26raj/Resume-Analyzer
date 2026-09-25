@@ -1,4 +1,4 @@
-"""Grounding checks used by analysis (phase 13) and resume rewriting (phase 12)."""
+"""Grounding checks used by match analysis and resume rewriting."""
 import pytest
 
 from app.services.evidence import is_supported, salient_terms, unsupported_terms

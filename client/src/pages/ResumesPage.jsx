@@ -101,7 +101,6 @@ export function ResumesPage() {
   const aborters = useRef(new Map())
   const nextId = useRef(1)
 
-  // New uploads are indexed by the background worker; refresh until none is still in progress.
   usePollWhile((resumes.data || []).some(isIndexing), resumes.reload)
 
   const updateUpload = (id, patch) =>

@@ -1,4 +1,4 @@
-"""Phase 12: resume rewriting that never invents experience."""
+"""Resume rewriting that never invents experience."""
 import json
 from types import SimpleNamespace
 
@@ -20,9 +20,6 @@ Added Redis caching that cut p95 latency by 40%."""
 
 def suggestion(original, rewritten, section="Experience", rationale="Closer to the job wording"):
     return {"section": section, "original": original, "rewritten": rewritten, "rationale": rationale}
-
-
-# --- validation -----------------------------------------------------------------------
 
 
 def test_truthful_rephrasing_is_accepted():
@@ -110,9 +107,6 @@ def test_accepted_suggestions_are_capped(monkeypatch):
     accepted, _ = validate_suggestions(items, RESUME)
 
     assert len(accepted) == 1
-
-
-# --- service ----------------------------------------------------------------------------
 
 
 class FakeModels:
@@ -213,9 +207,6 @@ def test_rewrite_errors(fake_gemini, models, message):
 
     with pytest.raises(RewriteServiceError, match=message):
         rewrite_resume(user_id=1, resume=resume, job=job)
-
-
-# --- API ----------------------------------------------------------------------------------
 
 
 def test_rewrite_endpoint(client, db_session, monkeypatch):

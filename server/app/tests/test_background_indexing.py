@@ -1,4 +1,4 @@
-"""Phase 15: background indexing on the Celery worker, with status tracking and fallbacks."""
+"""Background indexing on the Celery worker, with status tracking and fallbacks."""
 import pytest
 from celery.exceptions import Retry
 from kombu.exceptions import OperationalError
@@ -67,8 +67,6 @@ def reload(db_session, document):
     db_session.expire_all()
     return db_session.get(type(document), document.id)
 
-
-# ---------- Scheduling ----------
 
 def test_uploaded_resume_is_indexed_by_the_worker(client, db_session, tmp_path, monkeypatch, queue_enabled, fake_embeddings):
     monkeypatch.setattr(settings, "UPLOAD_DIR", str(tmp_path))
@@ -152,8 +150,6 @@ def test_falls_back_to_in_process_when_the_broker_is_down(client, db_session, au
     for job_id in (first, second):
         assert client.get(f"/jobs/{job_id}", headers=headers).json()["index_status"] == "indexed"
 
-
-# ---------- The task: outcomes and retries ----------
 
 def test_transient_failure_is_retried_with_backoff(db_session, worker_sessions, monkeypatch):
     user, _ = create_user_and_headers_direct(db_session)
@@ -240,8 +236,6 @@ def test_manual_reindex_records_the_status(client, db_session, monkeypatch):
     assert (resume.index_status, resume.chunk_count) == (IndexStatus.INDEXED, 3)
 
 
-# ---------- Worker health ----------
-
 @pytest.mark.parametrize(
     ("ping", "expected"),
     [(lambda timeout: [{"celery@host": {"ok": "pong"}}], "online"), (lambda timeout: [], "offline")],
@@ -275,8 +269,6 @@ def test_unreachable_broker_is_reported(client, monkeypatch):
     assert client.get("/health").json()["worker"] == "unavailable"
 
 
-# ---------- helpers ----------
-
 def failing_embeddings(chunks, **kwargs):
     raise EmbeddingServiceError("503 UNAVAILABLE")
 
@@ -290,8 +282,6 @@ def create_user_and_headers_direct(db_session):
     db_session.commit()
     return user, None
 
-
-# ---------- Reconciling legacy documents ----------
 
 def test_sync_marks_documents_found_in_qdrant(db_session):
     from app.ai.vector_store import upsert_chunks

@@ -5,6 +5,7 @@ from app.api import rate_limit
 from app.api.dependencies import get_current_user
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.errors import upstream_failure
 from app.models.analysis_result import AnalysisResult
 from app.models.job import Job
 from app.models.resume import Resume
@@ -103,7 +104,7 @@ def match_resume_to_job(
     try:
         result = run_match_analysis(user_id=current_user.id, resume=resume, job=job)
     except AnalysisServiceError as error:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(error))
+        raise upstream_failure(error)
 
     analysis_result = AnalysisResult(
         user_id=current_user.id,

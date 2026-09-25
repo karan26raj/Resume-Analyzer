@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.api.rate_limit import ai_generate_limit, limit_per_user
 from app.core.database import get_db
+from app.core.errors import upstream_failure
 
 from app.models.job import Job
 from app.models.resume import Resume
@@ -84,10 +85,7 @@ def assistant_question(
         )
 
     except RAGServiceError as error:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=str(error)
-        )
+        raise upstream_failure(error)
 
     return {
         "answer": answer,

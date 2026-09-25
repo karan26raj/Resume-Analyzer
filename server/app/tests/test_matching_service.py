@@ -1,4 +1,4 @@
-"""Unit tests for the match analysis pipeline (phases 9, 10 and 13)."""
+"""Unit tests for the match analysis pipeline."""
 from types import SimpleNamespace
 
 import pytest
@@ -23,9 +23,6 @@ def requirement(name, status, evidence="", category="skill", importance="require
         "status": status,
         "evidence": evidence,
     }
-
-
-# --- evidence verification (phase 13) --------------------------------------------------
 
 
 def test_verified_evidence_keeps_status():
@@ -73,9 +70,6 @@ def test_skill_lists_only_include_skills():
     ]
 
     assert skill_lists(items) == (["Python", "Docker"], ["Rust"])
-
-
-# --- retrieval (phase 9) ----------------------------------------------------------------
 
 
 def test_retrieval_returns_only_this_resumes_passages(qdrant, monkeypatch):
@@ -129,9 +123,6 @@ def test_retrieval_wraps_failures(qdrant, monkeypatch):
 
     with pytest.raises(RetrievalError, match="embedding quota"):
         retrieve_resume_evidence(user_id=1, resume_id=1, resume_text="x", job_text="y")
-
-
-# --- full pipeline ------------------------------------------------------------------------
 
 
 def _resume_and_job():

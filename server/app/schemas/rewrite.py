@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class RewriteRequest(BaseModel):
     resume_id: int = Field(gt=0)
     job_id: int = Field(gt=0)
-    # Skip the cache and always generate new suggestions (phase 14).
+    # Skip the cache and always generate new suggestions.
     force: bool = False
 
 

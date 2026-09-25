@@ -12,8 +12,7 @@ class AnalysisServiceError(Exception):
     pass
 
 
-# Phase 13: structured, auditable reasoning. The model lists each requirement with a verdict
-# and a verbatim quote as evidence; it does not produce the score (that is computed in code).
+# The model gives each requirement a verdict and a verbatim quote; the score is computed in code.
 SYSTEM_INSTRUCTIONS = """
 You are a precise resume-to-job-description matching assistant.
 

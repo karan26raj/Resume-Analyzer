@@ -29,7 +29,6 @@ export function AuthProvider({ children }) {
     return () => setUnauthorizedHandler(null)
   }, [logout])
 
-  // Load the current user whenever we have a token.
   useEffect(() => {
     if (!token) return undefined
     const controller = new AbortController()

@@ -1,4 +1,4 @@
-"""Phase 11: semantic job recommendations."""
+"""Semantic job recommendations."""
 import math
 
 import pytest
@@ -183,19 +183,20 @@ def test_empty_resume_returns_422(client, db_session):
     assert response.status_code == 422
 
 
-def test_resume_indexing_failure_returns_502(client, db_session, monkeypatch):
-    # conftest leaves GEMINI_API_KEY unset, so indexing the resume fails upstream.
+def test_resume_indexing_failure_returns_503(client, db_session, monkeypatch):
+    # conftest leaves GEMINI_API_KEY unset, so the resume can't be indexed.
     user, headers = create_user_and_headers(client, db_session)
     create_resume(db_session, user)
     create_job(db_session, user)
 
     response = client.get("/recommendations/jobs", headers=headers)
 
-    assert response.status_code == 502
+    assert response.status_code == 503
+    assert response.json()["code"] == "ai_not_configured"
 
 
 def test_skill_gap_endpoint_is_unchanged(client, db_session):
-    # The dashboard depends on GET /recommendations; phase 11 must not change it.
+    # The dashboard depends on GET /recommendations; its shape must not change.
     _, headers = create_user_and_headers(client, db_session)
 
     data = client.get("/recommendations", headers=headers).json()

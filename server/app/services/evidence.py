@@ -1,8 +1,4 @@
-"""Checks that keep AI output grounded in the user's resume.
-
-Used to verify quoted evidence in match analyses and to reject resume rewrites that
-introduce technologies, numbers or names the original resume does not contain.
-"""
+"""Checks that keep AI output grounded in the user's resume."""
 import re
 
 _WORD = re.compile(r"[a-z0-9]+")
@@ -96,3 +92,41 @@ def unsupported_terms(candidate: str, source_text: str) -> list[str]:
         if term not in missing:
             missing.append(term)
     return missing
+
+
+def canonical_term(term: str) -> str:
+    """"React.js", "ReactJS" and "react" -> "react"; symbols that carry identity (C#, C++) are kept."""
+    canonical = re.sub(r"[^a-z0-9+#]", "", normalize(term))
+    if canonical.endswith("js") and len(canonical) > 4:
+        canonical = canonical[:-2]
+    return canonical
+
+
+def mentions(term: str, text: str) -> bool:
+    """True when `term` (a technology name) is mentioned in `text`.
+
+    Tolerates spelling variants ("React.js" / "ReactJS" / "React", "REST APIs" / "RESTful API")
+    but not different technologies ("Java" is not "JavaScript", "C#" is not "C++").
+    """
+    term_norm = normalize(term or "")
+    text_norm = normalize(text or "")
+    if not term_norm or not text_norm:
+        return False
+
+    if re.search(rf"(?<![a-z0-9]){re.escape(term_norm)}(?![a-z0-9])", text_norm):
+        return True
+
+    # Same canonical spelling as one of the text's terms.
+    canonical = canonical_term(term_norm)
+    if canonical and canonical in {canonical_term(token) for token in _TERM.findall(text_norm)}:
+        return True
+
+    # Every word of a symbol-free name present as a whole word (allowing plurals and suffixes).
+    if re.search(r"[+#]", term_norm):
+        return False
+    parts = [part for part in words(term_norm) if len(part) > 1]
+    if not parts:
+        return False
+    text_words = set(words(text_norm))
+    text_stems = {_stem(word) for word in text_words}
+    return all(part in text_words or _stem(part) in text_stems for part in parts)

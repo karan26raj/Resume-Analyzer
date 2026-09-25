@@ -1,4 +1,4 @@
-"""Phase 10: explainable weighted match score."""
+"""Explainable weighted match score."""
 import pytest
 
 from app.core.config import settings

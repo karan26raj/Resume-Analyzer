@@ -10,20 +10,16 @@ from app.core.database import Base
 from app.models import AnalysisResult, Job, Resume, User
 
 
-# Alembic Config object
 config = context.config
 
 
-# Configure Python logging
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 
-# Use SQLAlchemy models for autogenerate
 target_metadata = Base.metadata
 
 
-# Get DATABASE_URL from .env
 config.set_main_option(
     "sqlalchemy.url",
     settings.DATABASE_URL

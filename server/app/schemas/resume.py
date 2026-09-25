@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 
 class IndexStatusFields(BaseModel):
-    """Where the document is in the embedding pipeline (phase 15)."""
+    """Where the document is in the embedding pipeline."""
 
     index_status: str
     index_error: str | None = None

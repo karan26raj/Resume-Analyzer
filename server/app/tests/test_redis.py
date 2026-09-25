@@ -1,4 +1,4 @@
-"""Phase 14: Redis caching, cache invalidation and rate limiting."""
+"""Redis caching, cache invalidation and rate limiting."""
 import fakeredis
 import pytest
 
@@ -69,8 +69,6 @@ def disconnected_redis():
     return fakeredis.FakeRedis(server=server, decode_responses=True)
 
 
-# ---------- Analysis cache ----------
-
 def test_repeated_analysis_is_served_from_cache(client, db_session, monkeypatch):
     user, headers, resume, job = setup_pair(client, db_session)
     calls = count_gemini_matches(monkeypatch)
@@ -132,8 +130,6 @@ def test_history_endpoints_report_uncached(client, db_session, monkeypatch):
     assert client.get("/analysis", headers=headers).json()[0]["cached"] is False
 
 
-# ---------- Rewrite cache ----------
-
 def test_repeated_rewrite_is_served_from_cache(client, db_session, monkeypatch):
     _, headers, resume, job = setup_pair(client, db_session)
     calls = count_rewrites(monkeypatch, resume, job)
@@ -160,8 +156,6 @@ def test_force_generates_new_rewrites(client, db_session, monkeypatch):
     assert after.json()["suggestions"][0]["rewritten"] == "b2"
     assert len(calls) == 2
 
-
-# ---------- Invalidation ----------
 
 def test_deleting_a_job_invalidates_only_that_jobs_entries(client, db_session, monkeypatch, redis_client):
     user, headers, resume, job = setup_pair(client, db_session)
@@ -262,8 +256,6 @@ def test_uploading_a_resume_refreshes_latest_resume_recommendations(client, db_s
     assert client.get("/recommendations/jobs", headers=headers).json()["resume_id"] == upload.json()["resume_id"]
 
 
-# ---------- Rate limiting ----------
-
 def test_login_is_rate_limited_per_ip(client, monkeypatch):
     monkeypatch.setattr(settings, "RATE_LIMIT_LOGIN", 3)
     body = {"email": "nobody@example.com", "password": "wrong-password"}
@@ -352,8 +344,6 @@ def test_rate_limiting_can_be_disabled(client, monkeypatch):
 
     assert [client.post("/auth/login", json=body).status_code for _ in range(3)] == [401, 401, 401]
 
-
-# ---------- Redis outages ----------
 
 def test_api_keeps_working_when_redis_is_down(client, db_session, monkeypatch):
     _, headers, resume, job = setup_pair(client, db_session)

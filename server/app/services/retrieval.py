@@ -1,4 +1,4 @@
-"""Phase 9: retrieve the resume passages most relevant to a job description."""
+"""Retrieve the resume passages most relevant to a job description."""
 import logging
 from dataclasses import dataclass, field
 

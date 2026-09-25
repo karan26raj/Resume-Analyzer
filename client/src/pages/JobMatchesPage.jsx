@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { BarChart3, Building2, FileText, PenLine, RefreshCw, Sparkles, Target } from 'lucide-react'
+import { BarChart3, Building2, FileText, MessagesSquare, PenLine, RefreshCw, Sparkles, Target } from 'lucide-react'
 import { recommendationsApi, resumesApi } from '../api/services'
 import { useApi } from '../hooks/useApi'
 import { PageHeader } from '../components/ui/PageHeader'
@@ -63,6 +63,9 @@ function MatchCard({ match, rank, resumeId }) {
         )}
         <Link to={`/rewrite?resume=${resumeId}&job=${match.job_id}`} className="btn btn--ghost btn--sm">
           <PenLine size={15} aria-hidden="true" /> Tailor resume
+        </Link>
+        <Link to={`/interview?resume=${resumeId}&job=${match.job_id}`} className="btn btn--ghost btn--sm">
+          <MessagesSquare size={15} aria-hidden="true" /> Interview questions
         </Link>
       </footer>
     </article>

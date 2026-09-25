@@ -1,4 +1,4 @@
-"""Reconcile each document's index_status with what is actually in Qdrant (phase 15).
+"""Reconcile each document's index_status with what is actually in Qdrant.
 
 Documents created before status tracking start as "pending". Run from the server directory:
 

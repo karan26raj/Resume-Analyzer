@@ -8,10 +8,6 @@ const MARGIN = { top: 16, right: 12, bottom: 30, left: 36 }
 const MAX_BAR = 24
 const TICKS = [0, 25, 50, 75, 100]
 
-/**
- * Match score of each analysis in chronological order (single series, so no legend box -
- * the card title names it). Hover or focus a column for its details; a table view exists.
- */
 export function ScoreTrendChart({ points }) {
   const [ref, width] = useElementWidth()
   const [active, setActive] = useState(null)

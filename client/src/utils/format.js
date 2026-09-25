@@ -60,7 +60,6 @@ export function fileTypeLabel(fileType) {
   return (fileType || '').replace('.', '').toUpperCase() || 'FILE'
 }
 
-// Score bands share one definition so every page labels scores identically.
 export function scoreBand(score) {
   if (score >= 75) return { key: 'good', label: 'Strong match' }
   if (score >= 50) return { key: 'warning', label: 'Partial match' }

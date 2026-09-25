@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.errors import upstream_failure
 from app.models.analysis_result import AnalysisResult
 from app.models.job import Job
 from app.models.resume import Resume
@@ -48,7 +49,6 @@ def get_recommendations(
     display_names: dict[str, str] = {}
 
     for analysis in analyses:
-        # Count each skill at most once per analysis.
         seen_in_analysis = set()
         for skill in analysis.missing_skills:
             key = skill.strip().lower()
@@ -93,7 +93,7 @@ def get_job_recommendations(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Rank your saved jobs by semantic similarity to a resume (phase 11)."""
+    """Rank your saved jobs by semantic similarity to a resume."""
     cache_key = cache.recommendations_key(current_user.id, "jobs", resume_id or "latest", limit)
     cached = cache.get_json(cache_key)
     if cached is not None:
@@ -129,12 +129,7 @@ def get_job_recommendations(
     except EmptyResumeError as error:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error))
     except JobRecommendationError as error:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(error))
-    except Exception as error:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Vector search failed: {error}",
-        )
+        raise upstream_failure(error)
 
     response = {
         "resume_id": resume.id,

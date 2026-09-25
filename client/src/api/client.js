@@ -1,4 +1,3 @@
-// Thin fetch wrapper around the FastAPI backend.
 // In development requests go through the Vite proxy (/api -> http://127.0.0.1:8000).
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '')
 
@@ -36,8 +35,14 @@ export class ApiError extends Error {
   }
 }
 
-// FastAPI returns either {"detail": "text"} or {"detail": [{loc, msg, ...}]} for validation errors.
+// Errors look like {"detail": "text" | [{loc, msg, type}], "code": "...", "request_id": "..."}.
 function messageFromBody(body, status) {
+  const message = detailMessage(body, status)
+  // Server-side failures get a short reference that matches the request ID in the server logs.
+  return status >= 500 && body?.request_id ? `${message} (ref ${body.request_id.slice(0, 8)})` : message
+}
+
+function detailMessage(body, status) {
   const detail = body?.detail
   if (typeof detail === 'string') return detail
   if (Array.isArray(detail) && detail.length) {

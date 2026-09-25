@@ -1,9 +1,5 @@
 import { useState } from 'react'
 
-/**
- * Horizontal bars: how many analyses listed each skill as missing. Single series (one colour).
- * Every bar carries its value at the tip, so the numbers are readable without hovering.
- */
 export function SkillGapChart({ skills, total }) {
   const [active, setActive] = useState(null)
   const max = Math.max(1, ...skills.map((item) => item.count))

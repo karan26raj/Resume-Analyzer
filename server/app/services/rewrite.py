@@ -1,11 +1,5 @@
-"""Phase 12: tailor resume wording to a job without inventing anything.
-
-    resume + job (+ the most relevant resume passages from retrieval)
-        -> Gemini proposes rewrites of existing resume lines
-        -> each suggestion is validated in code:
-             * the "original" must really be in the resume
-             * the rewrite must not add technologies, numbers or names absent from the resume
-        -> failing suggestions are returned as "rejected" with the reason
+"""Resume rewriting without inventing anything: every suggestion is validated against the resume,
+and failing ones are returned as "rejected" with the reason.
 """
 import json
 import logging

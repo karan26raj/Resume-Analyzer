@@ -1,13 +1,4 @@
-"""Phase 14: fixed-window rate limiting in Redis.
-
-Each (bucket, identifier) gets one counter per window, e.g. `ratelimit:login:203.0.113.7:1790000100`.
-INCR counts the request and EXPIREAT deletes the counter when its window ends, so no cleanup job
-is needed. Fixed windows allow a short burst of up to 2x the limit across a window boundary, which
-is acceptable for protecting login and the Gemini quota.
-
-If Redis is unavailable the limiter allows the request (fail open): losing rate limiting briefly is
-better than taking the whole API down with the cache.
-"""
+"""Fixed-window rate limiting in Redis. Fails open: if Redis is unavailable, requests are allowed."""
 import math
 import time
 from dataclasses import dataclass
@@ -70,7 +61,7 @@ def enforce(rule: Limit, identifier: str) -> None:
 
 
 def client_ip(request: Request) -> str:
-    # Behind a reverse proxy this is the proxy's address; phase 20 should trust X-Forwarded-For there.
+    # Behind a reverse proxy this is the proxy's address, not the client's.
     return request.client.host if request.client else "unknown"
 
 

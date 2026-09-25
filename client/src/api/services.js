@@ -21,7 +21,6 @@ export const resumesApi = {
   text: (id, options) => apiRequest(`/resumes/${id}/text`, options),
   remove: (id) => apiRequest(`/resumes/${id}`, { method: 'DELETE' }),
   upload: (file, onProgress) => uploadFile('/resumes/upload', file, { onProgress }),
-  // Truthful, job-tailored rewrites of existing resume lines (not stored by the API).
   // Cached by the API for 24 hours (cached: true) unless force is set.
   rewrite: (resumeId, jobId, { force = false } = {}) =>
     apiRequest('/resumes/rewrite', { method: 'POST', body: { resume_id: resumeId, job_id: jobId, force } }),
@@ -58,6 +57,12 @@ export const embeddingsApi = {
       method: 'POST',
       body: { query, document_type: documentType || null, limit },
     }),
+}
+
+export const interviewApi = {
+  // Cached by the API for 24 hours (cached: true) unless force is set.
+  questions: (resumeId, jobId, { force = false } = {}) =>
+    apiRequest('/interview/questions', { method: 'POST', body: { resume_id: resumeId, job_id: jobId, force } }),
 }
 
 export const assistantApi = {

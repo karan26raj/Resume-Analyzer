@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-/**
- * Runs an API call and tracks its loading / error / data state.
- * `reload()` refetches while keeping the previous data visible (no skeleton flash).
- */
+// `reload()` refetches while keeping the previous data visible (no skeleton flash).
 export function useApi(fetcher, deps = []) {
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)

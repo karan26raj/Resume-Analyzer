@@ -41,7 +41,6 @@ export function JobsPage() {
   const [deleting, setDeleting] = useState(false)
   const [indexing, setIndexing] = useState(null)
 
-  // New jobs are indexed by the background worker; refresh until none is still in progress.
   usePollWhile((jobs.data || []).some(isIndexing), jobs.reload)
 
   const errors = validate(form)

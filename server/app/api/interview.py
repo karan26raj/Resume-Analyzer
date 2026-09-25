@@ -9,24 +9,24 @@ from app.core.errors import upstream_failure
 from app.models.job import Job
 from app.models.resume import Resume
 from app.models.user import User
-from app.schemas.rewrite import RewriteRequest, RewriteResponse
+from app.schemas.interview import InterviewPrepResponse, InterviewRequest
 from app.services import cache
-from app.services.rewrite import RewriteServiceError, rewrite_resume
+from app.services.interview import InterviewServiceError, generate_interview_questions
 
 
 router = APIRouter(
-    prefix="/resumes",
-    tags=["Resume Rewriting"]
+    prefix="/interview",
+    tags=["Interview Coach"]
 )
 
 
-@router.post("/rewrite", response_model=RewriteResponse)
-def rewrite_resume_for_job(
-    request: RewriteRequest,
+@router.post("/questions", response_model=InterviewPrepResponse)
+def interview_questions(
+    request: InterviewRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Suggest truthful rewrites of resume lines tailored to a job."""
+    """Likely interview questions for this job, grouped by technology (4-5 per technology)."""
     resume = (
         db.query(Resume)
         .filter(Resume.id == request.resume_id, Resume.user_id == current_user.id)
@@ -44,7 +44,7 @@ def rewrite_resume_for_job(
     if job is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
-    cache_key = cache.rewrite_key(current_user.id, resume.id, job.id)
+    cache_key = cache.interview_key(current_user.id, resume.id, job.id)
     if not request.force:
         cached = cache.get_json(cache_key)
         if cached is not None:
@@ -54,8 +54,8 @@ def rewrite_resume_for_job(
     rate_limit.enforce(rate_limit.ai_generate_limit(), f"user:{current_user.id}")
 
     try:
-        result = rewrite_resume(user_id=current_user.id, resume=resume, job=job)
-    except RewriteServiceError as error:
+        result = generate_interview_questions(resume=resume, job=job)
+    except InterviewServiceError as error:
         raise upstream_failure(error)
 
     cache.set_json(cache_key, result, settings.CACHE_TTL_REWRITE_SECONDS)

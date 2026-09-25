@@ -9,6 +9,7 @@ import {
   FileText,
   History,
   Lightbulb,
+  MessagesSquare,
   PenLine,
   RotateCcw,
   Sparkles,
@@ -136,6 +137,12 @@ function AnalysisResult({ analysis, resumeName, job, fromCache, onRerun, rerunDi
             >
               <PenLine size={15} aria-hidden="true" /> Tailor resume for this job
             </Link>
+            <Link
+              to={`/interview?resume=${analysis.resume_id}&job=${analysis.job_id}`}
+              className="btn btn--secondary btn--sm"
+            >
+              <MessagesSquare size={15} aria-hidden="true" /> Prepare for the interview
+            </Link>
           </div>
         </div>
       </section>
@@ -239,7 +246,6 @@ export function AnalysisPage() {
   const [jobId, setJobId] = useState(params.get('job') || '')
   const [running, setRunning] = useState(false)
   const [runError, setRunError] = useState(null)
-  // ID of an analysis the API returned from its cache instead of running a new one.
   const [cachedId, setCachedId] = useState(null)
   const selectedId = Number(params.get('id')) || null
 

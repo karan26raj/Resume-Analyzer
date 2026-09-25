@@ -6,7 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 
 class IndexStatus(StrEnum):
-    """Where a document is in the embedding pipeline (phase 15)."""
+    """Where a document is in the embedding pipeline."""
 
     PENDING = "pending"        # not scheduled (or created before status tracking existed)
     QUEUED = "queued"          # waiting for a worker, or waiting to retry

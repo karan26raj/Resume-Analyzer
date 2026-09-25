@@ -10,6 +10,7 @@ import { JobsPage } from './pages/JobsPage'
 import { AnalysisPage } from './pages/AnalysisPage'
 import { JobMatchesPage } from './pages/JobMatchesPage'
 import { RewritePage } from './pages/RewritePage'
+import { InterviewPage } from './pages/InterviewPage'
 import { SearchPage } from './pages/SearchPage'
 import { AssistantPage } from './pages/AssistantPage'
 import { SettingsPage } from './pages/SettingsPage'
@@ -31,6 +32,7 @@ export default function App() {
                 <Route path="analysis" element={<AnalysisPage />} />
                 <Route path="matches" element={<JobMatchesPage />} />
                 <Route path="rewrite" element={<RewritePage />} />
+                <Route path="interview" element={<InterviewPage />} />
                 <Route path="search" element={<SearchPage />} />
                 <Route path="assistant" element={<AssistantPage />} />
                 <Route path="settings" element={<SettingsPage />} />

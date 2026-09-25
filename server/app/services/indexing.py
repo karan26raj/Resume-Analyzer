@@ -1,13 +1,8 @@
-"""Document indexing: chunk -> embed -> store in Qdrant, with the outcome tracked on the document.
+"""Document indexing (chunk, embed, store in Qdrant), with the outcome recorded on the document.
 
-Phase 15 pipeline:
-
-    upload / create  ->  status "queued"  ->  Celery worker  ->  "processing"  ->  "indexed" | "failed"
-
-`schedule_indexing` hands the work to the Celery queue and falls back to running it in-process
-(after the response) when the queue is disabled or its broker is unreachable. Either way the work
-itself is `run_indexing`, which loads the document in its own database session, so it can run in
-the API process, a worker thread or a worker process alike.
+`schedule_indexing` queues the work for the Celery worker, or runs it in-process after the response
+when the queue is disabled or unreachable. `run_indexing` opens its own database session, so it can
+run in either place.
 """
 import logging
 import time
@@ -19,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.ai.vector_store import delete_document_chunks, upsert_chunks
 from app.core.config import settings
 from app.core.database import SessionLocal
+from app.core.logging import request_id_var
 from app.models.index_status import IndexStatus
 from app.models.job import Job
 from app.models.resume import Resume
@@ -170,7 +166,11 @@ def schedule_indexing(
         from app.worker.tasks import index_document_task
 
         try:
-            index_document_task.apply_async(args=(document_type, document.id), retry=False)
+            index_document_task.apply_async(
+                args=(document_type, document.id),
+                headers={"request_id": request_id_var.get()},
+                retry=False,
+            )
             return
         except Exception as error:
             _queue_skip_until = time.monotonic() + settings.REDIS_RETRY_AFTER_SECONDS

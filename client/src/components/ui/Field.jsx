@@ -1,6 +1,5 @@
 import { useId } from 'react'
 
-// Floating-label inputs. The label sits inside the field and floats up on focus / when filled.
 export function TextField({ label, error, hint, className = '', counter, ...props }) {
   const id = useId()
   const describedBy = error || hint ? `${id}-help` : undefined

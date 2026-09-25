@@ -12,12 +12,12 @@ RequirementStatus = Literal["met", "partial", "missing"]
 class MatchRequest(BaseModel):
     resume_id: int = Field(gt=0)
     job_id: int = Field(gt=0)
-    # Skip the cache and always run a new analysis (phase 14).
+    # Skip the cache and always run a new analysis.
     force: bool = False
 
 
 class RequirementAssessment(BaseModel):
-    """One job requirement judged against the resume (Gemini output, phase 13)."""
+    """One job requirement judged against the resume (Gemini output)."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -91,7 +91,7 @@ class MatchResponse(MatchOutput):
     output_tokens: int | None
     created_at: datetime
 
-    # Added in phases 9-13; null for analyses created before them.
+    # Null for analyses created before evidence-based scoring.
     requirements: list[RequirementResult] | None = None
     score_breakdown: ScoreBreakdown | None = None
     semantic_similarity: float | None = None

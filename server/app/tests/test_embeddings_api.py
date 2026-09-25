@@ -38,14 +38,15 @@ def test_index_rejects_empty_resume(client, db_session):
     assert response.json()["detail"] == "Document has no text to embed"
 
 
-def test_index_returns_502_when_embedding_fails(client, db_session):
-    # conftest leaves GEMINI_API_KEY unset, so embedding fails as an upstream error.
+def test_index_returns_503_when_gemini_is_not_configured(client, db_session):
+    # conftest leaves GEMINI_API_KEY unset, so embedding can't run at all.
     user, headers = create_user_and_headers(client, db_session)
     resume = create_resume(db_session, user)
 
     response = client.post("/embeddings/index", headers=headers, json={"resume_id": resume.id})
 
-    assert response.status_code == 502
+    assert response.status_code == 503
+    assert response.json()["code"] == "ai_not_configured"
 
 
 def test_search_honours_document_type_and_returns_stable_ids(client, db_session, monkeypatch):

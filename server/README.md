@@ -69,6 +69,14 @@ The project is designed to demonstrate modern Backend Engineering, Generative AI
 * Semantic Similarity Search
 * Embedding-Based Retrieval
 
+## Interview Coach
+
+* 4-5 likely interview questions for each technology the job cares about
+* Covers technologies missing from the resume, so gaps can be prepared for
+* Question type (conceptual, practical, scenario, experience) and difficulty
+* Answer guide: what the interviewer looks for and the points a strong answer covers
+* Questions about the candidate's experience quote the resume, verified in code
+
 ## RAG Assistant
 
 * Resume Question Answering
@@ -206,99 +214,157 @@ RAG Question Answering
 
 ---
 
-# Setup
+# Getting Started
 
-## Clone Repository
+The application has four parts that run side by side:
+
+| Part | What it does | Runs as |
+| ---- | ------------ | ------- |
+| Infrastructure | PostgreSQL (data), Qdrant (vectors), Redis (cache, rate limits, task queue) | Docker containers |
+| API | FastAPI backend on http://127.0.0.1:8000 | `uvicorn` |
+| Worker | Indexes uploaded resumes and jobs for search | `celery` |
+| Frontend | React app on http://localhost:5173 (in `../client`) | `npm run dev` |
+
+**Requirements:** Python 3.12+, Node.js 20+, Docker Desktop and a Gemini API key.
+
+---
+
+## One-Time Setup
+
+### 1. Clone the repository
 
 ```bash
 git clone <your-repository-url>
-cd server
+cd <repository>/server
 ```
 
-## Create Virtual Environment
+### 2. Create the virtual environment and install the backend
 
 ```powershell
 python -m venv venv
-
 .\venv\Scripts\activate
-
 pip install -r requirements.txt
 ```
 
----
-
-## Environment Variables
-
-Create a `.env` file:
+### 3. Create `server/.env`
 
 ```env
-APP_NAME=AI Resume Analyzer
-DEBUG=False
-
 DATABASE_URL=postgresql+psycopg2://postgres:password@localhost:5432/resume_analyzer
 TEST_DATABASE_URL=postgresql+psycopg2://postgres:password@localhost:5432/resume_analyzer_test
 
-JWT_SECRET_KEY=your_secret_key
-JWT_ALGORITHM=HS256
-JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
+JWT_SECRET_KEY=replace_with_a_long_random_string
+GEMINI_API_KEY=your_gemini_api_key
 
-UPLOAD_DIR=uploads
-MAX_UPLOAD_SIZE_BYTES=10485760
-
-GEMINI_API_KEY=my_gemini_api_key
-GEMINI_MODEL=gemini-3.6-flash
-GEMINI_EMBEDDING_MODEL=gemini-embedding-001
-
-EMBEDDING_CHUNK_SIZE_WORDS=300
-EMBEDDING_CHUNK_OVERLAP_WORDS=50
-MAX_EMBEDDING_CHUNKS=50
-
-QDRANT_HOST=localhost
-QDRANT_PORT=6333
-QDRANT_COLLECTION_NAME=resume_embeddings
+CORS_ORIGINS=["http://localhost:5173"]
 ```
 
----
+Everything else has sensible defaults (see [Optional Settings](#optional-settings)). The credentials above match `docker-compose.yml`. Generate a secret with `python -c "import secrets; print(secrets.token_urlsafe(48))"`.
 
-## Start Qdrant
+### 4. Start the infrastructure
 
-```bash
-docker run -p 6333:6333 qdrant/qdrant
+```powershell
+docker compose up -d
 ```
 
-Dashboard:
+This starts PostgreSQL (5432), Qdrant (6333, dashboard at http://localhost:6333/dashboard) and Redis (6379). Create the test database once, for `pytest`:
 
-```text
-http://localhost:6333/dashboard
+```powershell
+docker compose exec postgres createdb -U postgres resume_analyzer_test
 ```
 
----
-
-## Run Database Migrations
+### 5. Create the database tables
 
 ```powershell
 alembic upgrade head
 ```
 
----
-
-## Start FastAPI Server
+### 6. Install the frontend
 
 ```powershell
-uvicorn app.main:app --reload
+cd ..\client
+npm install
 ```
 
-## Start the Background Worker
+---
 
-In a second terminal (Redis must be running):
+## Running the Application
+
+Do this every time. Use three terminals.
+
+### Step 1: Start Docker Desktop and the containers
+
+From `server/`:
 
 ```powershell
+docker compose up -d
+```
+
+Check with `docker ps` that the `postgres`, `qdrant` and `redis` containers are running.
+
+### Step 2: Start the API (terminal 1)
+
+```powershell
+cd server
+.\venv\Scripts\activate
+uvicorn app.main:app --reload --no-access-log
+```
+
+Wait for `Application startup complete`. `--no-access-log` is optional: the API writes its own access log line, with the request ID, for every request.
+
+### Step 3: Start the background worker (terminal 2)
+
+```powershell
+cd server
+.\venv\Scripts\activate
 celery -A app.worker.celery_app:celery_app worker --pool=threads --concurrency=4 --loglevel=info
 ```
 
-`--pool=threads` is required on Windows. Without a worker the API still works: new documents stay `queued` until a worker starts (the queue lives in Redis, so nothing is lost), and match analysis indexes a resume on the fly when it needs it. Set `TASK_QUEUE_ENABLED=False` to index in the API process instead.
+Wait for `celery@<computer-name> ready`. `--pool=threads` is required on Windows.
 
-Documents created before phase 15 start as `pending`. To reconcile them with Qdrant (and queue any that are missing):
+### Step 4: Start the frontend (terminal 3)
+
+```powershell
+cd client
+npm run dev
+```
+
+### Step 5: Check that everything is connected
+
+Open http://127.0.0.1:8000/health:
+
+```json
+{"status": "healthy", "redis": "connected", "worker": "online"}
+```
+
+### Step 6: Open the app
+
+Go to http://localhost:5173 and register an account. The API documentation is at http://127.0.0.1:8000/docs.
+
+### Stopping
+
+Press `Ctrl + C` in each terminal, then optionally stop the containers from `server/` with `docker compose stop`. Data is kept; `docker compose down -v` would delete it.
+
+---
+
+## Troubleshooting
+
+| Symptom | Fix |
+| ------- | --- |
+| `/health` shows `"worker": "offline"` | Start the worker (step 3). The status is cached, so it can take up to 15 seconds to change. |
+| `/health` shows `"redis": "unavailable"` | `docker compose up -d redis` |
+| The API fails to start with a database connection error | `docker compose up -d postgres`, and check `DATABASE_URL` |
+| "Search is temporarily unavailable" | Qdrant isn't running: `docker compose up -d qdrant` |
+| New uploads stay "Queued" | The worker isn't running (step 3) |
+| "AI features are not configured on this server" | Set `GEMINI_API_KEY` in `server/.env` and restart the API and worker |
+| The frontend says "Cannot reach the server" | The API isn't running, or crashed: check terminal 1 |
+| `'celery' is not recognized` or `'uvicorn' is not recognized` | Activate the virtual environment first: `.\venv\Scripts\activate` |
+| `port is already allocated` from Docker | Another container or program uses that port: `docker ps` shows which; stop it |
+
+The worker is optional: without it the API still works, new documents simply stay `queued` until a worker starts (the queue lives in Redis, so nothing is lost), and match analysis indexes a resume on the fly when it needs it. Set `TASK_QUEUE_ENABLED=False` to index in the API process instead.
+
+### Upgrading an existing installation
+
+After pulling new code, run `pip install -r requirements.txt`, `alembic upgrade head` and (in `client/`) `npm install`. Documents created before background indexing existed start as `pending`; reconcile them with Qdrant, and queue any that are missing, while the worker is running:
 
 ```powershell
 python -m app.scripts.sync_index_status --queue
@@ -386,6 +452,20 @@ Creating a job queues it for indexing the same way; deleting a job removes its a
 
 Rewrites are validated in code: the original line must exist in the resume, and a rewrite that adds any technology, number or name not already in the resume is returned under `rejected` with the reason and the offending terms.
 
+## Interview Coach API
+
+| Method | Endpoint             | Notes                                                                                  |
+| ------ | -------------------- | -------------------------------------------------------------------------------------- |
+| POST   | /interview/questions | `{resume_id, job_id, force?}` → questions grouped by technology, 4-5 per technology    |
+
+Gemini picks the technologies and writes the questions; the result is then verified in code:
+
+* A technology is kept only if it is mentioned in the job description or the resume (spelling variants such as "React.js" / "React" count; different technologies such as "Java" / "JavaScript" don't). Whether it appears in both, only the job (`"source": "job"`, a gap to prepare for) or only the resume is decided in code, not by the model.
+* A resume quote attached to a question must really be in the resume, otherwise it is removed.
+* Duplicate questions are dropped, each technology keeps at most 5 questions and needs at least 4, and at most 8 technologies are covered. Anything removed is listed under `skipped` with the reason.
+
+Results are cached for 24 hours per resume/job pair (`"cached": true`; send `"force": true` to regenerate) and count towards the `ai-generate` rate limit.
+
 ## Embeddings & Assistant APIs
 
 | Method | Endpoint           | Notes                                                               |
@@ -404,6 +484,7 @@ PostgreSQL is always the source of truth; Redis only saves repeated work.
 | ---- | --- | --- | ---------------- |
 | Match analysis | `analysis:{user}:r{resume}:j{job}` → analysis ID | 24 h | the resume or job is deleted |
 | Resume rewrite | `rewrite:{user}:r{resume}:j{job}` → full response | 24 h | the resume or job is deleted |
+| Interview questions | `interview:{user}:r{resume}:j{job}` → full response | 24 h | the resume or job is deleted |
 | `GET /recommendations`, `GET /recommendations/jobs` | `recs:{user}:v{version}:…` | 10 min | anything the user changes (upload, new job, delete, new analysis) bumps `{version}` |
 
 * Repeating `POST /analysis/match` or `POST /resumes/rewrite` for the same pair returns the earlier result with `"cached": true` (analysis: status 200 instead of 201) and makes no Gemini call. Send `"force": true` to run a new one.
@@ -414,7 +495,7 @@ PostgreSQL is always the source of truth; Redis only saves repeated work.
 | ------ | ---------- | ------- |
 | `login` | `POST /auth/login`, per client IP | 10 per 5 min |
 | `register` | `POST /auth/register`, per client IP | 5 per hour |
-| `ai-generate` | analysis, rewrite and assistant (Gemini text generation), per user | 20 per 10 min |
+| `ai-generate` | analysis, rewrite, interview questions and assistant (Gemini text generation), per user | 20 per 10 min |
 | `ai-embed` | `POST /embeddings/search` and `/embeddings/index`, per user | 60 per 10 min |
 
   Cache hits don't count towards `ai-generate`.
@@ -432,6 +513,37 @@ Embedding a document calls the Gemini API and can take seconds, so it runs on a 
 * **Deletes are safe:** a document deleted while it is being embedded has its new vectors removed.
 * **Fallback:** if the broker is unreachable when a document is created, the API indexes it in-process after the response and skips the queue for 30 seconds.
 * `GET /health` reports the worker: `online`, `offline` (no worker running), `unavailable` (broker down) or `disabled`.
+
+---
+
+# Error Handling and Logging
+
+Every response has an `X-Request-ID` header (a caller-supplied ID is kept if it is short and safe). Every error has the same shape:
+
+```json
+{"detail": "Resume not found", "code": "not_found", "request_id": "1dedd32d86fd42ee9b32e914c3b04d50"}
+```
+
+| Status | `code` | When |
+| ------ | ------ | ---- |
+| 400 | `bad_request` | Invalid upload (wrong type, empty file) |
+| 401 | `not_authenticated` | Missing, invalid or expired token |
+| 404 | `not_found` | Resource doesn't exist or belongs to another user |
+| 409 | `conflict` | Email already registered |
+| 413 | `payload_too_large` | Upload over `MAX_UPLOAD_SIZE_BYTES` |
+| 422 | `validation_error` | Invalid request body (`detail` lists the fields; submitted values are never echoed) |
+| 429 | `rate_limited` | Rate limit hit (`Retry-After` header) |
+| 500 | `internal_error` | A bug: generic message, full traceback in the log under the same request ID |
+| 502 | `upstream_error` | Gemini returned something unusable |
+| 503 | `ai_unavailable`, `ai_rate_limited`, `ai_not_configured`, `vector_store_unavailable`, `database_unavailable` | A dependency is down or overloaded (`Retry-After` header) |
+
+Raw errors from Gemini, Qdrant and PostgreSQL are logged in full but never sent to clients. Log lines carry the request ID, including lines written by the Celery worker for a task that request queued:
+
+```text
+2026-09-25 11:33:29,363 INFO [1dedd32d86fd42ee9b32e914c3b04d50] app.access: GET /resumes/999 404 16ms
+```
+
+The frontend shows the first 8 characters of the request ID with server errors (`… (ref 1dedd32d)`), so a reported problem can be found in the log.
 
 ---
 
@@ -458,6 +570,9 @@ pytest
 # Optional Settings
 
 ```env
+LOG_LEVEL=INFO
+LOG_JSON=False
+
 CORS_ORIGINS=["http://localhost:5173"]
 AUTO_INDEX_DOCUMENTS=True
 EMBEDDING_DIMENSIONS=3072
@@ -472,6 +587,10 @@ CACHE_TTL_RECOMMENDATIONS_SECONDS=600
 RATE_LIMIT_ENABLED=True
 RATE_LIMIT_LOGIN=10
 RATE_LIMIT_AI_GENERATE=20
+
+INTERVIEW_MIN_QUESTIONS=4
+INTERVIEW_MAX_QUESTIONS=5
+INTERVIEW_MAX_TECHNOLOGIES=8
 
 TASK_QUEUE_ENABLED=True
 CELERY_BROKER_URL=redis://localhost:6379/1

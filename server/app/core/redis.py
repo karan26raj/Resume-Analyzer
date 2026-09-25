@@ -1,9 +1,5 @@
-"""Phase 14: a single Redis connection shared by the cache and the rate limiter.
-
-Redis is an optimisation, never a dependency: every call goes through `run()`, which returns a
-default value when Redis is disabled or unreachable. After a failure Redis is skipped for
-REDIS_RETRY_AFTER_SECONDS (a simple circuit breaker), so an outage doesn't add a connection
-timeout to every request.
+"""Shared Redis connection. Every call goes through `run()`, which returns a default when Redis is
+disabled or failing, and skips Redis for a while after a failure (a simple circuit breaker).
 """
 import logging
 import threading

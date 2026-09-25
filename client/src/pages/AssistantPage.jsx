@@ -16,7 +16,6 @@ function newId() {
   return `${Date.now().toString(36)}-${idCounter}-${Math.random().toString(36).slice(2, 8)}`
 }
 
-// Example prompts shown in an empty conversation. They are prompts, not data.
 const STARTERS = [
   'What are my strongest technical skills?',
   'Which skills am I missing for this job?',

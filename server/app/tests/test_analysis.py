@@ -84,7 +84,7 @@ def test_match_creates_and_stores_analysis(client, db_session, monkeypatch):
 
 
 def test_match_response_keeps_every_original_field(client, db_session, monkeypatch):
-    # The frontend depends on these fields; later phases may only add to them.
+    # The frontend depends on these fields; new fields may only be added.
     user, headers = create_user_and_headers(client, db_session)
     resume = create_resume(db_session, user, raw_text=RESUME_TEXT)
     job = create_job(db_session, user)

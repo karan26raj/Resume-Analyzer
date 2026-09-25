@@ -1157,7 +1157,7 @@
   }
 }
 
-/* ---------- Search index status (phase 15) ---------- */
+/* ---------- Search index status ---------- */
 .status-pill--neutral {
   background: var(--surface-3);
   color: var(--text-secondary);

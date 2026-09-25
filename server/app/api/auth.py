@@ -68,7 +68,6 @@ def login_user(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    # Slows down password guessing from one address.
     rate_limit.enforce(rate_limit.login_limit(), rate_limit.client_ip(request))
 
     user = (

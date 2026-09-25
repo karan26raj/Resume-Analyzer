@@ -13,6 +13,10 @@ def rewrite_key(user_id: int, resume_id: int, job_id: int) -> str:
     return f"{SCHEMA_VERSION}:rewrite:{user_id}:r{resume_id}:j{job_id}"
 
 
+def interview_key(user_id: int, resume_id: int, job_id: int) -> str:
+    return f"{SCHEMA_VERSION}:interview:{user_id}:r{resume_id}:j{job_id}"
+
+
 def _version_key(user_id: int) -> str:
     return f"{SCHEMA_VERSION}:user:{user_id}:version"
 
@@ -64,12 +68,12 @@ def invalidate_user_recommendations(user_id: int) -> None:
 
 
 def invalidate_resume(user_id: int, resume_id: int) -> None:
-    for kind in ("analysis", "rewrite"):
+    for kind in ("analysis", "rewrite", "interview"):
         _delete_matching(f"{SCHEMA_VERSION}:{kind}:{user_id}:r{resume_id}:j*")
     invalidate_user_recommendations(user_id)
 
 
 def invalidate_job(user_id: int, job_id: int) -> None:
-    for kind in ("analysis", "rewrite"):
+    for kind in ("analysis", "rewrite", "interview"):
         _delete_matching(f"{SCHEMA_VERSION}:{kind}:{user_id}:r*:j{job_id}")
     invalidate_user_recommendations(user_id)

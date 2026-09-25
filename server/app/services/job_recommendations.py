@@ -1,12 +1,4 @@
-"""Phase 11: rank a user's saved jobs by semantic similarity to one of their resumes.
-
-    resume chunks (vectors already in Qdrant)
-        -> nearest job chunks for each resume chunk
-        -> per job, keep the best-matching pair of passages
-        -> rank jobs by that similarity (calibrated to 0-100 like the analysis score)
-
-No LLM call is needed. Documents that were never indexed are indexed on the fly.
-"""
+"""Rank a user's saved jobs by semantic similarity to one of their resumes (no LLM call)."""
 import logging
 
 from app.ai.vector_store import get_document_points, indexed_document_ids, search_chunks

@@ -1,6 +1,4 @@
-// Minimal, safe renderer for the light markdown the assistant returns:
-// paragraphs, "*"/"-" bullets, numbered lists, **bold**, *italic* and `code`.
-// It builds React elements (never raw HTML), so model output cannot inject markup.
+// Builds React elements (never raw HTML), so model output cannot inject markup.
 
 function renderInline(text, keyPrefix) {
   const parts = []

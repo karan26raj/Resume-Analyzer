@@ -27,7 +27,7 @@ class AnalysisResult(Base):
     model: Mapped[str] = mapped_column(String(100), nullable=False)
     input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    # Phases 9-13: evidence, score breakdown and retrieval details (null on older analyses).
+    # Evidence, score breakdown and retrieval details (null on older analyses).
     requirements: Mapped[list[dict] | None] = mapped_column(JSON, nullable=True)
     score_breakdown: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     semantic_similarity: Mapped[float | None] = mapped_column(Float, nullable=True)

@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.api.rate_limit import ai_embed_limit, limit_per_user
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.errors import upstream_failure
 
 from app.models.job import Job
 from app.models.resume import Resume
@@ -102,16 +103,8 @@ def index_document_endpoint(
         )
 
     except EmbeddingServiceError as error:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=str(error)
-        )
+        raise upstream_failure(error)
 
-    except Exception as error:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to store vectors in Qdrant: {str(error)}"
-        )
 
     mark_indexed(document, chunk_count)
     db.commit()
@@ -141,25 +134,14 @@ def search_embeddings(
         )
 
     except EmbeddingServiceError as error:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=str(error)
-        )
+        raise upstream_failure(error)
 
-    try:
-
-        results = search_chunks(
-            query_vector=query_vectors[0],
-            user_id=current_user.id,
-            limit=request.limit,
-            document_type=request.document_type,
-        )
-
-    except Exception as error:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Vector search failed: {str(error)}"
-        )
+    results = search_chunks(
+        query_vector=query_vectors[0],
+        user_id=current_user.id,
+        limit=request.limit,
+        document_type=request.document_type,
+    )
 
     return [
         {

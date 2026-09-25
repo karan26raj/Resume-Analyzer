@@ -8,7 +8,6 @@ import { EmptyState, ErrorState, Skeleton, Spinner } from '../components/ui/Stat
 import { SearchIllustration } from '../components/ui/Illustrations'
 import { similarityPercent } from '../utils/format'
 
-// Example queries shown before the first search. They are prompts, not data.
 const SUGGESTIONS = [
   'Backend API development experience',
   'Cloud and DevOps skills',

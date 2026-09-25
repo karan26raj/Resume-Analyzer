@@ -1,10 +1,6 @@
-"""Phase 10: an explainable match score computed in code, not guessed by the LLM.
+"""Explainable match score computed in code: skills 40%, experience 25%, education 10%, semantic 25%.
 
-    score = Σ component_score × effective_weight
-
-Components (default weights): skills 40%, experience 25%, education 10%, semantic 25%.
-A component that can't be measured (e.g. the job lists no education requirement, or
-retrieval was unavailable) is dropped and its weight is shared proportionally by the rest.
+A component that can't be measured is dropped and its weight shared proportionally by the rest.
 """
 from app.core.config import settings
 

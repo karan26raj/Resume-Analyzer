@@ -4,8 +4,6 @@ import { scoreBand } from '../../utils/format'
 
 const BAND_ICONS = { good: CheckCircle2, warning: CircleAlert, critical: AlertTriangle }
 
-// Animated progress ring for a 0-100 match score. The ring colour carries the score band,
-// and the band is always spelled out in text with an icon (never colour alone).
 export function ScoreRing({ score, size = 200, stroke = 14, showBand = true, animate = true }) {
   const [shown, setShown] = useState(animate ? 0 : score)
   const radius = (size - stroke) / 2

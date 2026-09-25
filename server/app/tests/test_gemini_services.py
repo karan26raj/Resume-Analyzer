@@ -75,9 +75,6 @@ def _match(**overrides):
     return generate_match(**kwargs)
 
 
-# --- model fallback -------------------------------------------------------
-
-
 def test_candidate_models_puts_primary_first_and_removes_duplicates(monkeypatch):
     monkeypatch.setattr(settings, "GEMINI_MODEL", "b")
     monkeypatch.setattr(settings, "GEMINI_FALLBACK_MODELS", ["a", "b", "c", "a"])
@@ -168,9 +165,6 @@ def test_does_not_fall_back_on_non_api_errors(use_models, model_chain):
     assert len(models.calls) == 1
 
 
-# --- match analysis -------------------------------------------------------
-
-
 def test_generate_match_parses_structured_output_and_token_usage(use_models):
     models = use_models(
         FakeGenerateModels(
@@ -201,12 +195,12 @@ def test_generate_match_parses_structured_output_and_token_usage(use_models):
     assert config.response_json_schema == LLMMatchOutput.model_json_schema()
     contents = models.calls[0]["contents"]
     assert "Python developer" in contents
-    # Phase 9: retrieved passages are part of the prompt, with their similarity.
+    # Retrieved passages are part of the prompt, with their similarity.
     assert '<passage similarity="0.81">\nRetrieved passage about APIs\n</passage>' in contents
 
 
 def test_llm_schema_does_not_ask_the_model_for_a_score():
-    # Phase 10: the score is computed in code, so the model must never be asked for it.
+    # The score is computed in code, so the model must never be asked for it.
     assert "match_score" not in LLMMatchOutput.model_json_schema()["properties"]
 
 
@@ -258,9 +252,6 @@ def test_generate_match_requires_api_key():
     # conftest clears GEMINI_API_KEY, so the real client cannot be created.
     with pytest.raises(AnalysisServiceError, match="not configured"):
         _match()
-
-
-# --- RAG ------------------------------------------------------------------
 
 
 def test_build_prompt_fills_context_and_question():
