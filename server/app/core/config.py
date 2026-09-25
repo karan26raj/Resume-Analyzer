@@ -116,6 +116,7 @@ class Settings(BaseSettings):
     @classmethod
     def use_psycopg2_driver(cls, value):
         if isinstance(value, str):
+            value = value.strip()
             for prefix in ("postgres://", "postgresql://"):
                 if value.startswith(prefix):
                     return "postgresql+psycopg2://" + value[len(prefix):]
@@ -152,6 +153,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore",
+        str_strip_whitespace=True,
     )
 
 

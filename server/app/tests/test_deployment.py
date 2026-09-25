@@ -177,3 +177,18 @@ def test_cors_origins_from_an_empty_variable(monkeypatch):
     monkeypatch.setenv("CORS_ORIGINS", "")
 
     assert make().CORS_ORIGINS == []
+
+
+def test_pasted_values_with_stray_spaces_are_trimmed(monkeypatch):
+    monkeypatch.setenv("QDRANT_URL", " https://abc.cloud.qdrant.io:6333 ")
+    monkeypatch.setenv("QDRANT_API_KEY", "  key-123	")
+    monkeypatch.setenv("REDIS_URL", " rediss://default:p@x.upstash.io:6379")
+    monkeypatch.setenv("GEMINI_API_KEY", "AIza-key ")
+
+    configured = make(DATABASE_URL=" postgresql://u:p@ep-1.neon.tech/app?sslmode=require ")
+
+    assert configured.QDRANT_URL == "https://abc.cloud.qdrant.io:6333"
+    assert configured.QDRANT_API_KEY == "key-123"
+    assert configured.REDIS_URL == "rediss://default:p@x.upstash.io:6379"
+    assert configured.GEMINI_API_KEY == "AIza-key"
+    assert configured.DATABASE_URL == "postgresql+psycopg2://u:p@ep-1.neon.tech/app?sslmode=require"
