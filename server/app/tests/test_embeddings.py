@@ -72,6 +72,5 @@ def test_create_embeddings_rejects_incomplete_response(monkeypatch):
 
 
 def test_create_embeddings_requires_api_key():
-    # conftest clears GEMINI_API_KEY, so the real client cannot be created.
     with pytest.raises(EmbeddingServiceError, match="not configured"):
         create_embeddings(["a"])

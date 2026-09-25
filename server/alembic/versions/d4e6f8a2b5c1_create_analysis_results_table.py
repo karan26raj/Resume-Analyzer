@@ -1,10 +1,3 @@
-"""create analysis results table
-
-Revision ID: d4e6f8a2b5c1
-Revises: b2d9a037a1e4
-Create Date: 2026-09-21
-"""
-
 from typing import Sequence, Union
 
 from alembic import op

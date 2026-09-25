@@ -1,5 +1,3 @@
-// The API has no conversation-history endpoint, so assistant answers (exactly as returned
-// by /assistant/ask) are kept in this browser's storage, per user.
 const MAX_MESSAGES = 200
 
 function key(userId) {
@@ -21,17 +19,13 @@ export function saveChat(userId, messages) {
   if (!userId) return
   try {
     localStorage.setItem(key(userId), JSON.stringify(messages.slice(-MAX_MESSAGES)))
-  } catch {
-    // Storage full or unavailable: the conversation still works for this session.
-  }
+  } catch {}
 }
 
 export function clearChat(userId) {
   try {
     localStorage.removeItem(key(userId))
-  } catch {
-    // ignore
-  }
+  } catch {}
 }
 
 export function countAnsweredQuestions(userId) {

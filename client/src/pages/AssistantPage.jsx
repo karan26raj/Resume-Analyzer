@@ -138,7 +138,6 @@ export function AssistantPage() {
     }
   }
 
-  // Drop the failed answer and the question right before it, then ask again with the same scope.
   const retry = (message) => {
     setMessages((current) => {
       const index = current.findIndex((item) => item.id === message.id)

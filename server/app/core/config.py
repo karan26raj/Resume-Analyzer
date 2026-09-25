@@ -10,13 +10,12 @@ class Settings(BaseSettings):
     LOG_JSON: bool = False
 
     DATABASE_URL: str
-    TEST_DATABASE_URL: str
+    TEST_DATABASE_URL: str | None = None
 
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
-    # JSON list in .env, e.g. CORS_ORIGINS=["http://localhost:5173"]
     CORS_ORIGINS: list[str] = []
 
     UPLOAD_DIR: str = "uploads"
@@ -24,7 +23,6 @@ class Settings(BaseSettings):
 
     GEMINI_API_KEY: str | None = None
     GEMINI_MODEL: str = "gemini-3.6-flash"
-    # Tried in order when GEMINI_MODEL is overloaded, rate limited or unavailable.
     GEMINI_FALLBACK_MODELS: list[str] = [
         "gemini-3.6-flash",
         "gemini-3.8-flash",
@@ -34,25 +32,20 @@ class Settings(BaseSettings):
     GEMINI_TEMPERATURE: float = 0.2
     GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-001"
     GEMINI_TIMEOUT_SECONDS: int = 60
-    # Attempts per model before moving to the next fallback model.
     GEMINI_MAX_RETRIES: int = 2
 
     MAX_ANALYSIS_TEXT_CHARACTERS: int = 24_000
 
     ANALYSIS_EVIDENCE_CHUNKS: int = 5
-    # Search queries are embedded with the Gemini API, which rejects over-long input.
     MAX_QUERY_EMBED_CHARACTERS: int = 6_000
 
-    # Match score weights, redistributed when a component can't be measured.
     SCORE_WEIGHT_SKILLS: float = 0.40
     SCORE_WEIGHT_EXPERIENCE: float = 0.25
     SCORE_WEIGHT_EDUCATION: float = 0.10
     SCORE_WEIGHT_SEMANTIC: float = 0.25
-    # Cosine similarity calibration: at or below FLOOR scores 0, at or above CEILING scores 100.
     SEMANTIC_SIMILARITY_FLOOR: float = 0.45
     SEMANTIC_SIMILARITY_CEILING: float = 0.85
 
-    # Passage-to-passage similarity runs higher than query-to-passage, so recommendations have their own calibration.
     RECOMMENDATION_SIMILARITY_FLOOR: float = 0.70
     RECOMMENDATION_SIMILARITY_CEILING: float = 0.85
 
@@ -70,36 +63,29 @@ class Settings(BaseSettings):
 
     QDRANT_HOST: str = "localhost"
     QDRANT_PORT: int = 6333
-    # Overrides host/port when set, e.g. ":memory:" for tests.
     QDRANT_LOCATION: str | None = None
     QDRANT_COLLECTION_NAME: str = "resume_embeddings"
 
-    # Empty disables caching and rate limiting; if Redis is unreachable the API works without them.
     REDIS_URL: str | None = "redis://localhost:6379/0"
     REDIS_TIMEOUT_SECONDS: float = 0.5
-    # After a connection failure Redis is skipped for this long instead of slowing every request.
     REDIS_RETRY_AFTER_SECONDS: int = 30
 
     CACHE_TTL_ANALYSIS_SECONDS: int = 24 * 60 * 60
     CACHE_TTL_REWRITE_SECONDS: int = 24 * 60 * 60
     CACHE_TTL_RECOMMENDATIONS_SECONDS: int = 10 * 60
 
-    # Fixed-window limits: at most LIMIT requests per WINDOW seconds.
     RATE_LIMIT_ENABLED: bool = True
-    RATE_LIMIT_LOGIN: int = 10  # per client IP
+    RATE_LIMIT_LOGIN: int = 10
     RATE_LIMIT_LOGIN_WINDOW_SECONDS: int = 5 * 60
-    RATE_LIMIT_REGISTER: int = 5  # per client IP
+    RATE_LIMIT_REGISTER: int = 5
     RATE_LIMIT_REGISTER_WINDOW_SECONDS: int = 60 * 60
-    RATE_LIMIT_AI_GENERATE: int = 20  # per user
+    RATE_LIMIT_AI_GENERATE: int = 20
     RATE_LIMIT_AI_GENERATE_WINDOW_SECONDS: int = 10 * 60
-    RATE_LIMIT_AI_EMBED: int = 60  # per user
+    RATE_LIMIT_AI_EMBED: int = 60
     RATE_LIMIT_AI_EMBED_WINDOW_SECONDS: int = 10 * 60
 
-    # When disabled or unreachable, documents are indexed in-process after the response.
     TASK_QUEUE_ENABLED: bool = True
-    # A separate Redis database from the cache, so flushing the cache never drops queued work.
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
-    # Retries for transient failures (Gemini 429/503, Qdrant hiccups), with exponential backoff.
     INDEX_TASK_MAX_RETRIES: int = 3
     INDEX_TASK_RETRY_BASE_SECONDS: int = 10
 
@@ -115,7 +101,8 @@ class Settings(BaseSettings):
         return value
 
     model_config = SettingsConfigDict(
-        env_file=".env"
+        env_file=".env",
+        extra="ignore",
     )
 
 

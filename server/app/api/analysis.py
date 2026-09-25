@@ -83,7 +83,6 @@ def match_resume_to_job(
     if job is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
-    # Resumes and jobs are immutable, so a recent analysis of the same pair is still valid.
     cache_key = cache.analysis_key(current_user.id, resume.id, job.id)
     if not match_request.force:
         cached_id = cache.get_value(cache_key)
@@ -98,7 +97,6 @@ def match_resume_to_job(
             response.status_code = status.HTTP_200_OK
             return MatchResponse.model_validate(cached).model_copy(update={"cached": True})
 
-    # Only requests that actually reach Gemini count towards the limit.
     rate_limit.enforce(rate_limit.ai_generate_limit(), f"user:{current_user.id}")
 
     try:

@@ -1,8 +1,3 @@
-"""add analysis evidence, score breakdown and retrieval fields
-
-Revision ID: c5e8a1d3f7b9
-Revises: a7c3e9f1b2d4
-"""
 from alembic import op
 import sqlalchemy as sa
 

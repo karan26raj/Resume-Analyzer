@@ -72,7 +72,6 @@ def delete_job(
     db: Session = Depends(get_db),
 ):
     job = _get_owned_job(job_id, current_user.id, db)
-    # Analysis results for this job are removed by the ON DELETE CASCADE foreign key.
     db.delete(job)
     db.commit()
     cache.invalidate_job(current_user.id, job_id)

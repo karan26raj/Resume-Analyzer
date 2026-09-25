@@ -27,8 +27,6 @@ def api_error(code: int) -> errors.APIError:
 
 
 class FakeGenerateModels:
-    """Fake `client.models`; `errors_by_model` makes specific models fail."""
-
     def __init__(self, text, usage=None, error=None, errors_by_model=None):
         self.text = text
         self.usage = usage
@@ -47,8 +45,6 @@ class FakeGenerateModels:
 
 @pytest.fixture
 def use_models(monkeypatch):
-    """Route every Gemini call through the given FakeGenerateModels."""
-
     def install(models: FakeGenerateModels) -> FakeGenerateModels:
         monkeypatch.setattr(
             gemini_module, "get_gemini_client", lambda: SimpleNamespace(models=models)
@@ -145,7 +141,6 @@ def test_raises_last_error_when_all_models_fail(use_models, model_chain):
 
 @pytest.mark.parametrize("code", [400, 401, 403])
 def test_does_not_fall_back_on_request_errors(use_models, model_chain, code):
-    # A bad request or bad API key fails the same way on every model, so fail fast.
     models = use_models(
         FakeGenerateModels("ok", errors_by_model={"primary": api_error(code)})
     )
@@ -195,12 +190,10 @@ def test_generate_match_parses_structured_output_and_token_usage(use_models):
     assert config.response_json_schema == LLMMatchOutput.model_json_schema()
     contents = models.calls[0]["contents"]
     assert "Python developer" in contents
-    # Retrieved passages are part of the prompt, with their similarity.
     assert '<passage similarity="0.81">\nRetrieved passage about APIs\n</passage>' in contents
 
 
 def test_llm_schema_does_not_ask_the_model_for_a_score():
-    # The score is computed in code, so the model must never be asked for it.
     assert "match_score" not in LLMMatchOutput.model_json_schema()["properties"]
 
 
@@ -249,7 +242,6 @@ def test_generate_match_wraps_api_errors(use_models, model_chain):
 
 
 def test_generate_match_requires_api_key():
-    # conftest clears GEMINI_API_KEY, so the real client cannot be created.
     with pytest.raises(AnalysisServiceError, match="not configured"):
         _match()
 
@@ -285,7 +277,6 @@ def test_build_prompt_labels_documents_by_name_not_id():
 
     assert '<document type="résumé" name="Alex_Resume.pdf">' in prompt
     assert '<document type="job description" name="Senior \'Python\' Dev at Acme">' in prompt
-    # Unknown documents fall back to a generic label; IDs and chunk numbers never appear.
     assert '<document type="job description" name="job description">' in prompt
     assert 'id="' not in prompt and "chunk=" not in prompt
 

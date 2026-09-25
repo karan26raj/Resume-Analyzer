@@ -1,4 +1,3 @@
-"""Unit tests for the match analysis pipeline."""
 from types import SimpleNamespace
 
 import pytest
@@ -91,10 +90,9 @@ def test_retrieval_returns_only_this_resumes_passages(qdrant, monkeypatch):
 
     assert [passage["content"] for passage in result.passages] == ["mine a", "mine b"]
     assert result.passages[0]["score"] == pytest.approx(1.0)
-    # Mean of the top passages: (1.0 + 0.0) / 2
     assert result.similarity == pytest.approx(0.5)
     assert captured["task_type"] == "RETRIEVAL_QUERY"
-    assert len(captured["text"]) == 6000  # long job descriptions are trimmed before embedding
+    assert len(captured["text"]) == 6000
 
 
 def test_retrieval_indexes_an_unindexed_resume_first(qdrant, monkeypatch):
@@ -164,7 +162,6 @@ def test_pipeline_passes_retrieved_passages_to_the_model(monkeypatch):
     assert captured["retrieved_passages"] == passages
     assert result["retrieved_evidence"] == passages
     assert result["semantic_similarity"] == 0.8
-    # The invented Kubernetes quote was downgraded, so it counts as partial, not met.
     statuses = {item["requirement"]: item["status"] for item in result["requirements"]}
     assert statuses == {"Python": "met", "Kubernetes": "partial"}
 
@@ -190,5 +187,4 @@ def test_pipeline_continues_without_retrieval(monkeypatch):
     semantic = next(item for item in result["score_breakdown"]["components"] if item["name"] == "semantic")
     assert semantic["score"] is None
     assert semantic["effective_weight"] == 0
-    # Only skills remain: Python met (2) + Kubernetes partial (1) of 4 -> 75
     assert result["match_score"] == 75

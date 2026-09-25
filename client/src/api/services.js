@@ -1,8 +1,5 @@
 import { apiRequest, uploadFile } from './client'
 
-// Every path below matches a route in server/app/api exactly (including trailing
-// slashes), so no request ever depends on a redirect.
-
 export const authApi = {
   register: (email, password) =>
     apiRequest('/auth/register', { method: 'POST', body: { email, password }, auth: false }),
@@ -21,7 +18,6 @@ export const resumesApi = {
   text: (id, options) => apiRequest(`/resumes/${id}/text`, options),
   remove: (id) => apiRequest(`/resumes/${id}`, { method: 'DELETE' }),
   upload: (file, onProgress) => uploadFile('/resumes/upload', file, { onProgress }),
-  // Cached by the API for 24 hours (cached: true) unless force is set.
   rewrite: (resumeId, jobId, { force = false } = {}) =>
     apiRequest('/resumes/rewrite', { method: 'POST', body: { resume_id: resumeId, job_id: jobId, force } }),
 }
@@ -36,14 +32,12 @@ export const jobsApi = {
 export const analysisApi = {
   list: (filters, options) => apiRequest('/analysis', { ...options, query: filters }),
   get: (id, options) => apiRequest(`/analysis/${id}`, options),
-  // The API returns a recent stored analysis of the same pair (cached: true) unless force is set.
   match: (resumeId, jobId, { force = false } = {}) =>
     apiRequest('/analysis/match', { method: 'POST', body: { resume_id: resumeId, job_id: jobId, force } }),
 }
 
 export const recommendationsApi = {
   get: (limit = 8, options) => apiRequest('/recommendations', { ...options, query: { limit } }),
-  // Saved jobs ranked by semantic similarity to a resume (defaults to the newest resume).
   jobs: ({ resumeId, limit = 10 } = {}, options) =>
     apiRequest('/recommendations/jobs', { ...options, query: { resume_id: resumeId || undefined, limit } }),
 }
@@ -60,7 +54,6 @@ export const embeddingsApi = {
 }
 
 export const interviewApi = {
-  // Cached by the API for 24 hours (cached: true) unless force is set.
   questions: (resumeId, jobId, { force = false } = {}) =>
     apiRequest('/interview/questions', { method: 'POST', body: { resume_id: resumeId, job_id: jobId, force } }),
 }

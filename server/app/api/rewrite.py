@@ -26,7 +26,6 @@ def rewrite_resume_for_job(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Suggest truthful rewrites of resume lines tailored to a job."""
     resume = (
         db.query(Resume)
         .filter(Resume.id == request.resume_id, Resume.user_id == current_user.id)
@@ -50,7 +49,6 @@ def rewrite_resume_for_job(
         if cached is not None:
             return {**cached, "cached": True}
 
-    # Only requests that actually reach Gemini count towards the limit.
     rate_limit.enforce(rate_limit.ai_generate_limit(), f"user:{current_user.id}")
 
     try:

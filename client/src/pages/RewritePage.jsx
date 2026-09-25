@@ -15,7 +15,6 @@ async function copyText(text) {
     await navigator.clipboard.writeText(text)
     return
   }
-  // Fallback for plain-http hosts, where the Clipboard API is unavailable.
   const area = document.createElement('textarea')
   area.value = text
   area.setAttribute('readonly', '')
@@ -116,7 +115,6 @@ export function RewritePage() {
   const [error, setError] = useState(null)
   const [result, setResult] = useState(null)
 
-  // Keep pickers valid once the lists load.
   useEffect(() => {
     if (resumes.data && resumeId && !resumes.data.some((resume) => String(resume.id) === resumeId)) setResumeId('')
   }, [resumes.data, resumeId])

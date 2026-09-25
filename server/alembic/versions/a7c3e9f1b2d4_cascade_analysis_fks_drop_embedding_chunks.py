@@ -1,11 +1,3 @@
-"""cascade analysis foreign keys and drop embedding chunks
-
-Deleting a resume or job now removes its analysis results. Vectors are
-stored in Qdrant, so the unused embedding_chunks table is dropped.
-
-Revision ID: a7c3e9f1b2d4
-Revises: f1a2b3c4d5e6
-"""
 from alembic import op
 import sqlalchemy as sa
 

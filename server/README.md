@@ -216,16 +216,18 @@ RAG Question Answering
 
 # Getting Started
 
-The application has four parts that run side by side:
+The backend has five parts, all defined in `docker-compose.yml`; the frontend (in `../client`) runs separately.
 
-| Part | What it does | Runs as |
-| ---- | ------------ | ------- |
-| Infrastructure | PostgreSQL (data), Qdrant (vectors), Redis (cache, rate limits, task queue) | Docker containers |
-| API | FastAPI backend on http://127.0.0.1:8000 | `uvicorn` |
-| Worker | Indexes uploaded resumes and jobs for search | `celery` |
-| Frontend | React app on http://localhost:5173 (in `../client`) | `npm run dev` |
+| Part | What it does | Port |
+| ---- | ------------ | ---- |
+| `postgres` | Users, resumes, jobs and analyses | 5432 |
+| `qdrant` | Vectors of resume and job chunks (dashboard: http://localhost:6333/dashboard) | 6333 |
+| `redis` | Cache and rate limits (database 0), Celery task queue (database 1) | 6379 |
+| `api` | FastAPI backend (runs migrations first, via the one-off `migrate` service) | 8000 |
+| `worker` | Celery worker that indexes uploaded resumes and jobs | — |
+| Frontend | React app | 5173 |
 
-**Requirements:** Python 3.12+, Node.js 20+, Docker Desktop and a Gemini API key.
+**Requirements:** Docker Desktop, Node.js 20+, a Gemini API key. Python 3.12+ only if you run the backend outside Docker or run the tests.
 
 ---
 
@@ -238,15 +240,7 @@ git clone <your-repository-url>
 cd <repository>/server
 ```
 
-### 2. Create the virtual environment and install the backend
-
-```powershell
-python -m venv venv
-.\venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-### 3. Create `server/.env`
+### 2. Create `server/.env`
 
 ```env
 DATABASE_URL=postgresql+psycopg2://postgres:password@localhost:5432/resume_analyzer
@@ -256,29 +250,15 @@ JWT_SECRET_KEY=replace_with_a_long_random_string
 GEMINI_API_KEY=your_gemini_api_key
 
 CORS_ORIGINS=["http://localhost:5173"]
+
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=password
+POSTGRES_DB=resume_analyzer
 ```
 
-Everything else has sensible defaults (see [Optional Settings](#optional-settings)). The credentials above match `docker-compose.yml`. Generate a secret with `python -c "import secrets; print(secrets.token_urlsafe(48))"`.
+`POSTGRES_*` configure the PostgreSQL container and must match the user, password and database in `DATABASE_URL`. Choose your own password; the container only reads it the first time it creates its data volume. Generate a secret with `python -c "import secrets; print(secrets.token_urlsafe(48))"`. Everything else has defaults (see [Optional Settings](#optional-settings)). Inside Docker, the database, Qdrant, Redis and upload settings are set by `docker-compose.yml`, so the `localhost` values above are only used when you run the backend outside Docker.
 
-### 4. Start the infrastructure
-
-```powershell
-docker compose up -d
-```
-
-This starts PostgreSQL (5432), Qdrant (6333, dashboard at http://localhost:6333/dashboard) and Redis (6379). Create the test database once, for `pytest`:
-
-```powershell
-docker compose exec postgres createdb -U postgres resume_analyzer_test
-```
-
-### 5. Create the database tables
-
-```powershell
-alembic upgrade head
-```
-
-### 6. Install the frontend
+### 3. Install the frontend
 
 ```powershell
 cd ..\client
@@ -287,62 +267,89 @@ npm install
 
 ---
 
-## Running the Application
+## Running with Docker (recommended)
 
-Do this every time. Use three terminals.
-
-### Step 1: Start Docker Desktop and the containers
+### Step 1: Start the backend
 
 From `server/`:
 
 ```powershell
-docker compose up -d
+docker compose up -d --build
 ```
 
-Check with `docker ps` that the `postgres`, `qdrant` and `redis` containers are running.
+This builds the image, starts PostgreSQL, Qdrant and Redis, waits until they are healthy, applies database migrations, then starts the API and the worker. Check with `docker compose ps`: every service should be `healthy` (and `migrate` `Exited (0)`).
 
-### Step 2: Start the API (terminal 1)
+`docker compose up` also applies `docker-compose.override.yml`, which runs the code from this folder and restarts the API and worker when you edit a file. For a production-like run without it: `docker compose -f docker-compose.yml up -d --build`.
 
-```powershell
-cd server
-.\venv\Scripts\activate
-uvicorn app.main:app --reload --no-access-log
-```
-
-Wait for `Application startup complete`. `--no-access-log` is optional: the API writes its own access log line, with the request ID, for every request.
-
-### Step 3: Start the background worker (terminal 2)
-
-```powershell
-cd server
-.\venv\Scripts\activate
-celery -A app.worker.celery_app:celery_app worker --pool=threads --concurrency=4 --loglevel=info
-```
-
-Wait for `celery@<computer-name> ready`. `--pool=threads` is required on Windows.
-
-### Step 4: Start the frontend (terminal 3)
+### Step 2: Start the frontend
 
 ```powershell
 cd client
 npm run dev
 ```
 
-### Step 5: Check that everything is connected
+### Step 3: Check and open
 
-Open http://127.0.0.1:8000/health:
+- http://127.0.0.1:8000/health should show `{"status": "healthy", "redis": "connected", "worker": "online"}`
+- Open http://localhost:5173 and register an account. API docs: http://127.0.0.1:8000/docs
 
-```json
-{"status": "healthy", "redis": "connected", "worker": "online"}
+### Everyday commands
+
+| Task | Command |
+| ---- | ------- |
+| Follow the API or worker logs | `docker compose logs -f api` / `docker compose logs -f worker` |
+| Stop everything (data is kept) | `docker compose stop` |
+| Start again | `docker compose up -d` |
+| Rebuild after changing `requirements.txt` | `docker compose up -d --build` |
+| Run a script in the container | `docker compose exec api python -m app.scripts.sync_index_status --queue` |
+| Delete everything, including data | `docker compose down -v` |
+
+Data lives in named volumes (`postgres_data`, `qdrant_data`, `redis_data`, `uploads`), so it survives restarts and rebuilds. In development, uploaded files are stored in `server/uploads` instead.
+
+### Moving an existing local PostgreSQL into Docker
+
+If your data lives in a PostgreSQL installed on your computer, copy it into the container once, then stop the local server so only one database uses port 5432:
+
+```powershell
+pg_dump -h localhost -U postgres -d resume_analyzer -Fc --no-owner --no-privileges -f resume_analyzer.dump
+docker compose up -d postgres            # use $env:POSTGRES_PORT=55432 first if the local server still holds 5432
+docker compose cp resume_analyzer.dump postgres:/tmp/resume_analyzer.dump
+docker compose exec postgres pg_restore -U postgres -d resume_analyzer --no-owner --no-privileges /tmp/resume_analyzer.dump
+docker compose exec postgres createdb -U postgres resume_analyzer_test
 ```
 
-### Step 6: Open the app
+Then re-create the vectors in the container's Qdrant: `docker compose exec api python -m app.scripts.sync_index_status --queue`.
 
-Go to http://localhost:5173 and register an account. The API documentation is at http://127.0.0.1:8000/docs.
+Host ports can be changed if something else already uses them, e.g. `$env:POSTGRES_PORT=5433; docker compose up -d` (also `QDRANT_PORT`, `REDIS_PORT`, `API_PORT`). To keep using a PostgreSQL installed on your computer instead of the container, set `DB_HOST=host.docker.internal` (and `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` to match).
 
-### Stopping
+---
 
-Press `Ctrl + C` in each terminal, then optionally stop the containers from `server/` with `docker compose stop`. Data is kept; `docker compose down -v` would delete it.
+## Running Without Docker (API and worker on your machine)
+
+Useful for debugging with breakpoints. Use three terminals.
+
+### One-time: virtual environment and database
+
+From `server/`:
+
+```powershell
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements-dev.txt
+docker compose up -d postgres qdrant redis
+alembic upgrade head
+```
+
+`requirements-dev.txt` adds the test tools to `requirements.txt`.
+
+### Every time
+
+1. `docker compose up -d postgres qdrant redis` (from `server/`)
+2. Terminal 1, the API: `.\venv\Scripts\activate` then `uvicorn app.main:app --reload --no-access-log`
+3. Terminal 2, the worker: `.\venv\Scripts\activate` then `celery -A app.worker.celery_app:celery_app worker --pool=threads --concurrency=4 --loglevel=info` (`--pool=threads` is required on Windows)
+4. Terminal 3, the frontend: `cd client` then `npm run dev`
+
+Don't run the Docker `api`/`worker` services and the local ones at the same time: both would use port 8000 and the same queue.
 
 ---
 
@@ -350,24 +357,25 @@ Press `Ctrl + C` in each terminal, then optionally stop the containers from `ser
 
 | Symptom | Fix |
 | ------- | --- |
-| `/health` shows `"worker": "offline"` | Start the worker (step 3). The status is cached, so it can take up to 15 seconds to change. |
+| `port is already allocated` or `address already in use` | Another program or container uses that port (e.g. a PostgreSQL installed on Windows, or an older Qdrant container). Stop it, or change the host port (see above). |
+| A service is `unhealthy` or keeps restarting | `docker compose logs <service>` shows why |
+| `migrate` exited with an error | `docker compose logs migrate`; fix the cause, then `docker compose up -d` again |
+| `/health` shows `"worker": "offline"` | The worker isn't running: `docker compose ps worker`, `docker compose logs worker`. The status is cached for 15 seconds. |
 | `/health` shows `"redis": "unavailable"` | `docker compose up -d redis` |
-| The API fails to start with a database connection error | `docker compose up -d postgres`, and check `DATABASE_URL` |
-| "Search is temporarily unavailable" | Qdrant isn't running: `docker compose up -d qdrant` |
-| New uploads stay "Queued" | The worker isn't running (step 3) |
-| "AI features are not configured on this server" | Set `GEMINI_API_KEY` in `server/.env` and restart the API and worker |
-| The frontend says "Cannot reach the server" | The API isn't running, or crashed: check terminal 1 |
-| `'celery' is not recognized` or `'uvicorn' is not recognized` | Activate the virtual environment first: `.\venv\Scripts\activate` |
-| `port is already allocated` from Docker | Another container or program uses that port: `docker ps` shows which; stop it |
-
-The worker is optional: without it the API still works, new documents simply stay `queued` until a worker starts (the queue lives in Redis, so nothing is lost), and match analysis indexes a resume on the fly when it needs it. Set `TASK_QUEUE_ENABLED=False` to index in the API process instead.
+| "Search is temporarily unavailable" | Qdrant isn't reachable: `docker compose ps qdrant` |
+| New uploads stay "Queued" | The worker isn't running |
+| "AI features are not configured on this server" | Set `GEMINI_API_KEY` in `server/.env`, then `docker compose up -d` to recreate the containers |
+| The frontend says "Cannot reach the server" | The API isn't running on port 8000: `docker compose ps api` |
+| `'celery'` / `'uvicorn'` is not recognized (without Docker) | Activate the virtual environment: `.\venv\Scripts\activate` |
 
 ### Upgrading an existing installation
 
-After pulling new code, run `pip install -r requirements.txt`, `alembic upgrade head` and (in `client/`) `npm install`. Documents created before background indexing existed start as `pending`; reconcile them with Qdrant, and queue any that are missing, while the worker is running:
+After pulling new code: `docker compose up -d --build` (it applies new migrations automatically) and `npm install` in `client/`. Without Docker: `pip install -r requirements-dev.txt` and `alembic upgrade head`.
+
+Documents created before background indexing existed start as `pending`. Reconcile them with Qdrant, and queue any that are missing, while the worker runs:
 
 ```powershell
-python -m app.scripts.sync_index_status --queue
+docker compose exec api python -m app.scripts.sync_index_status --queue
 ```
 
 ---
@@ -547,19 +555,17 @@ The frontend shows the first 8 characters of the request ID with server errors (
 
 ---
 
-# Local Infrastructure
+# Docker
 
-`docker-compose.yml` starts PostgreSQL, Qdrant and Redis (cache in database 0, Celery broker in database 1):
-
-```bash
-docker compose up -d
-```
+* `Dockerfile`: one image (Python 3.13, non-root user) for the API, the worker and migrations. Secrets are never copied into it; `.env` is passed at runtime.
+* `docker-compose.yml`: PostgreSQL, Qdrant, Redis, `migrate`, `api` and `worker`, with health checks and start order (migrations run before the API and worker start). Redis persists the task queue (append-only file), so queued indexing work survives a restart.
+* `docker-compose.override.yml`: development only; mounts the source and reloads on changes.
 
 ---
 
 # Running Tests
 
-Tests use the `TEST_DATABASE_URL` database, an in-memory Qdrant and an in-memory Redis (fakeredis). Celery tasks run eagerly (in-process). Gemini is never called.
+Install the test tools with `pip install -r requirements-dev.txt`. Tests use the `TEST_DATABASE_URL` database, an in-memory Qdrant and an in-memory Redis (fakeredis). Celery tasks run eagerly (in-process). Gemini is never called.
 
 ```powershell
 pytest

@@ -26,7 +26,6 @@ def interview_questions(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Likely interview questions for this job, grouped by technology (4-5 per technology)."""
     resume = (
         db.query(Resume)
         .filter(Resume.id == request.resume_id, Resume.user_id == current_user.id)
@@ -50,7 +49,6 @@ def interview_questions(
         if cached is not None:
             return {**cached, "cached": True}
 
-    # Only requests that actually reach Gemini count towards the limit.
     rate_limit.enforce(rate_limit.ai_generate_limit(), f"user:{current_user.id}")
 
     try:

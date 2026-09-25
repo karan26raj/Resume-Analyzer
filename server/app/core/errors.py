@@ -1,7 +1,3 @@
-"""One error format for the API: {"detail", "code", "request_id"}.
-
-External failures are logged in full but reported with a safe message.
-"""
 import logging
 
 import httpx
@@ -38,8 +34,6 @@ INTERNAL_ERROR_MESSAGE = "Something went wrong on our side. Please try again."
 
 
 class ServiceFailure(Exception):
-    """An external service failed; carries the status, code and safe message to report."""
-
     def __init__(self, status_code: int, code: str, message: str, retry_after: int | None = None):
         super().__init__(message)
         self.status_code = status_code
@@ -77,7 +71,6 @@ def error_response(
 
 
 def _causes(error: BaseException):
-    """The error and everything it was raised from or while handling."""
     seen = set()
     while error is not None and id(error) not in seen:
         seen.add(id(error))
@@ -86,7 +79,6 @@ def _causes(error: BaseException):
 
 
 def classify_failure(error: BaseException) -> ServiceFailure:
-    """Map a failure (possibly wrapped by our services) to a safe, specific API error."""
     for cause in _causes(error):
         if isinstance(cause, ServiceFailure):
             return cause
@@ -111,14 +103,12 @@ def classify_failure(error: BaseException) -> ServiceFailure:
         if isinstance(cause, httpx.TransportError):
             return ServiceFailure(503, "service_unavailable", "A required service is unreachable. Please try again.", 30)
 
-    # Our own messages (no third-party error underneath) are written for users and safe to show.
     if all(type(cause).__module__.startswith("app.") for cause in _causes(error)):
         return ServiceFailure(502, "upstream_error", str(error))
     return ServiceFailure(502, "upstream_error", "The AI service returned an unexpected response. Please try again.")
 
 
 def upstream_failure(error: BaseException) -> ServiceFailure:
-    """Log a failed external call in full and return the safe error to raise instead."""
     failure = classify_failure(error)
     logger.warning("External service failure (%s): %s", failure.code, error, exc_info=error)
     return failure
@@ -130,12 +120,10 @@ async def _service_failure_handler(request: Request, exc: ServiceFailure) -> JSO
 
 
 async def _http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
-    # Keeps headers such as WWW-Authenticate (401) and Retry-After (429).
     return error_response(request, exc.status_code, exc.detail, headers=exc.headers)
 
 
 async def _validation_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
-    # Only where and what: FastAPI's default also echoes the submitted value, which may be a password.
     errors = [{"loc": list(error["loc"]), "msg": error["msg"], "type": error["type"]} for error in exc.errors()]
     return error_response(request, status.HTTP_422_UNPROCESSABLE_CONTENT, errors)
 
@@ -165,4 +153,3 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(QdrantApiException, _unavailable_handler)
     app.add_exception_handler(httpx.TransportError, _unavailable_handler)
     app.add_exception_handler(DBAPIError, _database_handler)
-    # Anything else is a bug: RequestContextMiddleware logs it and returns a generic 500.

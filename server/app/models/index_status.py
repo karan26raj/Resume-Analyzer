@@ -6,13 +6,11 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 
 class IndexStatus(StrEnum):
-    """Where a document is in the embedding pipeline."""
-
-    PENDING = "pending"        # not scheduled (or created before status tracking existed)
-    QUEUED = "queued"          # waiting for a worker, or waiting to retry
-    PROCESSING = "processing"  # a worker is chunking and embedding it
-    INDEXED = "indexed"        # its vectors are in Qdrant
-    FAILED = "failed"          # gave up; index_error says why
+    PENDING = "pending"
+    QUEUED = "queued"
+    PROCESSING = "processing"
+    INDEXED = "indexed"
+    FAILED = "failed"
 
 
 class IndexStatusMixin:

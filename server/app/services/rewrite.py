@@ -1,6 +1,3 @@
-"""Resume rewriting without inventing anything: every suggestion is validated against the resume,
-and failing ones are returned as "rejected" with the reason.
-"""
 import json
 import logging
 
@@ -68,7 +65,6 @@ Company: {job.company}
 
 
 def validate_suggestions(suggestions: list[dict], resume_text: str) -> tuple[list[dict], list[dict]]:
-    """Split suggestions into (accepted, rejected) by the "never invent" rules."""
     accepted, rejected = [], []
     for item in suggestions:
         if not is_supported(item["original"], resume_text):

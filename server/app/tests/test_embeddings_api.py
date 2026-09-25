@@ -24,7 +24,6 @@ def test_index_job_stores_chunks(client, db_session, qdrant, monkeypatch):
         ids=[point_id(user.id, "job", job.id, 0)],
         with_payload=True,
     )
-    # chunk_text re-joins words with single spaces.
     assert stored[0].payload["content"].startswith("Backend Developer Example Python")
 
 
@@ -39,7 +38,6 @@ def test_index_rejects_empty_resume(client, db_session):
 
 
 def test_index_returns_503_when_gemini_is_not_configured(client, db_session):
-    # conftest leaves GEMINI_API_KEY unset, so embedding can't run at all.
     user, headers = create_user_and_headers(client, db_session)
     resume = create_resume(db_session, user)
 

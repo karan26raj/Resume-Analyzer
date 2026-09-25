@@ -1,12 +1,3 @@
-"""Reconcile each document's index_status with what is actually in Qdrant.
-
-Documents created before status tracking start as "pending". Run from the server directory:
-
-    python -m app.scripts.sync_index_status           # mark documents found in Qdrant as indexed
-    python -m app.scripts.sync_index_status --queue   # ...and queue every document that isn't indexed
-
-Queued documents are picked up by the Celery worker, so start it first when using --queue.
-"""
 import argparse
 from collections import defaultdict
 
@@ -45,7 +36,6 @@ def sync(db: Session, *, queue: bool) -> dict[str, int]:
                     document.index_error = None
                     to_queue.append((document_type, document.id))
                 elif document.index_status == IndexStatus.INDEXED:
-                    # Marked indexed, but its vectors are gone (e.g. the Qdrant volume was reset).
                     document.index_status = IndexStatus.PENDING
                     counts["marked_pending"] += 1
 

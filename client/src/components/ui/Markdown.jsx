@@ -1,5 +1,3 @@
-// Builds React elements (never raw HTML), so model output cannot inject markup.
-
 function renderInline(text, keyPrefix) {
   const parts = []
   const pattern = /(\*\*[^*]+\*\*|`[^`]+`|\*[^*\s][^*]*\*)/g

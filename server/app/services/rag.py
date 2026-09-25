@@ -53,7 +53,6 @@ def _document_label(document_type: str, document_id: int, document_names: dict |
 
 
 def build_prompt(question: str, results, document_names: dict | None = None) -> str:
-    """Context passages are labelled with document names (never database IDs), so answers cite them by name."""
     context_parts = []
 
     for hit in results:
@@ -82,10 +81,6 @@ def ask_question(
     documents: list[tuple[str, int]] | None = None,
     document_names: dict[tuple[str, int], str] | None = None,
 ):
-    """Answer a question from the user's indexed chunks. Returns (answer, sources).
-
-    `document_names` maps (document_type, document_id) to a human-readable name for citations.
-    """
     try:
         query_vectors, _ = create_embeddings(
             [question],

@@ -1,4 +1,3 @@
-"""Semantic job recommendations."""
 import math
 
 import pytest
@@ -28,9 +27,9 @@ def test_jobs_are_ranked_by_similarity(client, db_session):
     medium = create_job(db_session, user, title="Medium match")
     far = create_job(db_session, user, title="Far match")
     index(user.id, "resume", resume.id, "Python FastAPI backend", unit_vector(0))
-    index(user.id, "job", close.id, "Python backend role", mixed_vector(1.0, 0.2))   # cos ~0.981
-    index(user.id, "job", medium.id, "Half related role", mixed_vector(1.0, 1.0))   # cos ~0.707
-    index(user.id, "job", far.id, "Unrelated role", unit_vector(1))                  # cos 0
+    index(user.id, "job", close.id, "Python backend role", mixed_vector(1.0, 0.2))
+    index(user.id, "job", medium.id, "Half related role", mixed_vector(1.0, 1.0))
+    index(user.id, "job", far.id, "Unrelated role", unit_vector(1))
 
     response = client.get("/recommendations/jobs", headers=headers, params={"resume_id": resume.id})
 
@@ -41,8 +40,7 @@ def test_jobs_are_ranked_by_similarity(client, db_session):
     ranked = data["recommendations"]
     assert [item["title"] for item in ranked] == ["Close match", "Medium match", "Far match"]
     assert ranked[0]["similarity"] == pytest.approx(1 / math.sqrt(1.04), abs=1e-3)
-    # Recommendation calibration: similarity 0.70 -> 0, 0.85 -> 100.
-    assert ranked[0]["match_score"] == 100          # 0.981 is above the ceiling
+    assert ranked[0]["match_score"] == 100
     assert ranked[1]["match_score"] == round(100 * (1 / math.sqrt(2) - 0.70) / 0.15)
     assert ranked[2]["match_score"] == 0
     assert ranked[0]["reason"].startswith("Strong semantic match")
@@ -184,7 +182,6 @@ def test_empty_resume_returns_422(client, db_session):
 
 
 def test_resume_indexing_failure_returns_503(client, db_session, monkeypatch):
-    # conftest leaves GEMINI_API_KEY unset, so the resume can't be indexed.
     user, headers = create_user_and_headers(client, db_session)
     create_resume(db_session, user)
     create_job(db_session, user)
@@ -196,7 +193,6 @@ def test_resume_indexing_failure_returns_503(client, db_session, monkeypatch):
 
 
 def test_skill_gap_endpoint_is_unchanged(client, db_session):
-    # The dashboard depends on GET /recommendations; its shape must not change.
     _, headers = create_user_and_headers(client, db_session)
 
     data = client.get("/recommendations", headers=headers).json()

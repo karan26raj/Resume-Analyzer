@@ -1,4 +1,3 @@
-/* ---------- Cards ---------- */
 .card {
   position: relative;
   background: var(--surface);
@@ -49,7 +48,6 @@
   opacity: 0.6;
 }
 
-/* ---------- Buttons ---------- */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -181,7 +179,6 @@
   color: var(--status-critical-text);
 }
 
-/* ---------- Loading ---------- */
 .spinner {
   display: inline-block;
   flex-shrink: 0;
@@ -203,7 +200,6 @@
   gap: 14px;
 }
 
-/* ---------- Empty / error states ---------- */
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -270,7 +266,6 @@
   color: var(--text-secondary);
 }
 
-/* ---------- Floating-label fields ---------- */
 .field {
   display: grid;
   gap: 6px;
@@ -353,7 +348,6 @@
   top: 18px;
 }
 
-/* Float the label on focus, when filled, and always for selects */
 .field input:focus + label,
 .field input:not(:placeholder-shown) + label,
 .field textarea:focus + label,
@@ -416,7 +410,6 @@
   gap: 16px;
 }
 
-/* ---------- Modal ---------- */
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -500,7 +493,6 @@
   padding: 16px;
 }
 
-/* ---------- Toasts ---------- */
 .toast-region {
   position: fixed;
   right: 20px;
@@ -546,7 +538,6 @@
   color: var(--accent);
 }
 
-/* ---------- Pills, badges, chips ---------- */
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -663,7 +654,6 @@
   background: var(--status-critical);
 }
 
-/* ---------- Segmented control, search, toolbars ---------- */
 .segmented {
   display: inline-flex;
   padding: 3px;
@@ -774,7 +764,6 @@
   background: var(--surface-2);
 }
 
-/* ---------- Tables ---------- */
 .table-card {
   padding: 6px;
 }
@@ -848,7 +837,6 @@
   gap: 2px;
 }
 
-/* ---------- Progress ---------- */
 .progress {
   height: 6px;
   border-radius: 999px;
@@ -865,7 +853,6 @@
   transition: width 160ms linear;
 }
 
-/* ---------- Score ring ---------- */
 .score-ring {
   display: flex;
   flex-direction: column;
@@ -931,7 +918,6 @@
   margin-top: 4px;
 }
 
-/* ---------- Charts ---------- */
 .chart__toolbar {
   display: flex;
   justify-content: flex-end;
@@ -1063,7 +1049,6 @@
   text-align: right;
 }
 
-/* ---------- Markdown (assistant answers) ---------- */
 .markdown {
   display: grid;
   gap: 10px;
@@ -1091,7 +1076,6 @@
   font-size: 15px;
 }
 
-/* ---------- Animations ---------- */
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -1157,7 +1141,6 @@
   }
 }
 
-/* ---------- Search index status ---------- */
 .status-pill--neutral {
   background: var(--surface-3);
   color: var(--text-secondary);

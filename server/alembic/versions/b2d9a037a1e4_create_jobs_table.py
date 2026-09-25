@@ -1,10 +1,3 @@
-"""create jobs table
-
-Revision ID: b2d9a037a1e4
-Revises: cdf3df93ba88
-Create Date: 2026-09-21
-"""
-
 from typing import Sequence, Union
 
 from alembic import op

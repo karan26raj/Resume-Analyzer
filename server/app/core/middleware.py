@@ -1,8 +1,3 @@
-"""Request IDs, access logging and a safety net for unhandled errors.
-
-A plain ASGI middleware (not BaseHTTPMiddleware) so the request ID context variable reaches the
-endpoint, its dependencies and its background tasks.
-"""
 import logging
 import re
 import time
@@ -18,7 +13,6 @@ access_logger = logging.getLogger("app.access")
 error_logger = logging.getLogger("app.errors")
 
 REQUEST_ID_HEADER = b"x-request-id"
-# Accept a caller's ID (e.g. from a proxy or the frontend) only if it is short and log-safe.
 VALID_REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 QUIET_PATHS = {"/health"}
 
@@ -43,7 +37,6 @@ class RequestContextMiddleware:
             return
 
         request_id = _incoming_request_id(scope)
-        # request.state.request_id, readable even after this middleware has returned.
         scope.setdefault("state", {})["request_id"] = request_id
         token = request_id_var.set(request_id)
         started = time.perf_counter()

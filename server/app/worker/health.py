@@ -9,10 +9,8 @@ PING_TIMEOUT_SECONDS = 0.5
 
 
 def worker_status(redis_state: str) -> str:
-    """'online', 'offline' (no worker running), 'unavailable' (broker unreachable) or 'disabled'."""
     if not settings.TASK_QUEUE_ENABLED:
         return "disabled"
-    # The broker lives on the same Redis server; don't wait on a ping that can't succeed.
     if redis_state == "unavailable":
         return "unavailable"
 

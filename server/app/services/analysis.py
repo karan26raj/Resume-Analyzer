@@ -1,6 +1,3 @@
-"""Match analysis: retrieve resume passages, have Gemini assess each requirement with a verbatim
-quote, verify the quotes against the resume, then compute the score in code.
-"""
 import logging
 
 from app.models.job import Job
@@ -14,12 +11,10 @@ from app.services.scoring import ScoringError, compute_match_score
 
 logger = logging.getLogger(__name__)
 
-# An unverifiable "met" becomes "partial"; an unverifiable "partial" becomes "missing".
 DOWNGRADE = {"met": "partial", "partial": "missing", "missing": "missing"}
 
 
 def verify_requirements(requirements: list[dict], resume_text: str) -> list[dict]:
-    """Check each quoted excerpt against the resume and downgrade claims it doesn't support."""
     verified = []
     for item in requirements:
         status = item["status"]
@@ -37,7 +32,6 @@ def verify_requirements(requirements: list[dict], resume_text: str) -> list[dict
 
 
 def skill_lists(requirements: list[dict]) -> tuple[list[str], list[str]]:
-    """matched_skills / missing_skills derived from the verified requirements, so they always agree with the score."""
     skills = [item for item in requirements if item["category"] == "skill"]
     matched = [item["requirement"] for item in skills if item["status"] in ("met", "partial")]
     missing = [item["requirement"] for item in skills if item["status"] == "missing"]
@@ -45,7 +39,6 @@ def skill_lists(requirements: list[dict]) -> tuple[list[str], list[str]]:
 
 
 def run_match_analysis(*, user_id: int, resume: Resume, job: Job) -> dict:
-    """Returns the fields of an AnalysisResult (everything except ids)."""
     try:
         evidence = retrieve_resume_evidence(
             user_id=user_id,
@@ -54,8 +47,6 @@ def run_match_analysis(*, user_id: int, resume: Resume, job: Job) -> dict:
             job_text=job_to_text(job),
         )
     except RetrievalError:
-        # Retrieval is an enhancement: the analysis still runs on the full resume text,
-        # and the semantic component is left out of the score.
         logger.warning("Retrieval failed for resume %s / job %s; continuing without it", resume.id, job.id, exc_info=True)
         evidence = None
 

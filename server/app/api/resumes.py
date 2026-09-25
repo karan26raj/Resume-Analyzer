@@ -1,6 +1,6 @@
 import logging
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import tempfile
 import uuid
 import zipfile
@@ -41,8 +41,11 @@ def _get_owned_resume(resume_id: int, user_id: int, db: Session) -> Resume:
     return resume
 
 
+def _stored_file(resume: Resume) -> Path:
+    return Path(settings.UPLOAD_DIR).resolve() / PureWindowsPath(resume.file_path).name
+
+
 def _validate_file_contents(file_path: Path, file_extension: str) -> None:
-    """Reject files whose contents do not match their claimed document type."""
     with file_path.open("rb") as uploaded_file:
         header = uploaded_file.read(4)
 
@@ -89,20 +92,16 @@ def delete_resume(
     db: Session = Depends(get_db)
 ):
     resume = _get_owned_resume(resume_id, current_user.id, db)
-    file_path = Path(resume.file_path)
+    file_path = _stored_file(resume)
 
-    # Analysis results for this resume are removed by the ON DELETE CASCADE foreign key.
     db.delete(resume)
     db.commit()
     cache.invalidate_resume(current_user.id, resume_id)
 
-    # Only ever remove files that live inside the upload directory.
-    upload_dir = Path(settings.UPLOAD_DIR).resolve()
-    if file_path.resolve().is_relative_to(upload_dir):
-        try:
-            file_path.unlink(missing_ok=True)
-        except OSError:
-            logger.exception("Failed to delete stored file for resume %s", resume_id)
+    try:
+        file_path.unlink(missing_ok=True)
+    except OSError:
+        logger.exception("Failed to delete stored file for resume %s", resume_id)
 
     remove_document_from_index(
         user_id=current_user.id,
@@ -164,7 +163,6 @@ def upload_resume(
         _validate_file_contents(temporary_path, file_extension)
         raw_text = _extract_text(temporary_path, file_extension)
 
-        # The document is only made durable after validation and text extraction succeed.
         final_path = upload_dir / f"{uuid.uuid4()}{file_extension}"
         os.replace(temporary_path, final_path)
         temporary_path = None
@@ -173,7 +171,7 @@ def upload_resume(
             user_id=current_user.id,
             filename=file.filename,
             file_type=file_extension,
-            file_path=str(final_path),
+            file_path=final_path.name,
             raw_text=raw_text,
         )
         db.add(resume)
@@ -194,7 +192,6 @@ def upload_resume(
         if final_path and final_path.exists() and not database_record_created:
             final_path.unlink()
 
-    # "Latest resume" recommendations now refer to this upload.
     cache.invalidate_user_recommendations(current_user.id)
 
     if raw_text:

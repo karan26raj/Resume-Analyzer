@@ -1,10 +1,3 @@
-"""add structured analysis fields
-
-Revision ID: e7f9a3c6d2b4
-Revises: d4e6f8a2b5c1
-Create Date: 2026-09-21
-"""
-
 from typing import Sequence, Union
 
 from alembic import op

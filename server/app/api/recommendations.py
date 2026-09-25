@@ -31,7 +31,6 @@ def get_recommendations(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Aggregate the user's analyses into their most frequent skill gaps and latest recommendations."""
     cache_key = cache.recommendations_key(current_user.id, "skills", limit)
     cached = cache.get_json(cache_key)
     if cached is not None:
@@ -45,7 +44,6 @@ def get_recommendations(
     )
 
     skill_counts: Counter[str] = Counter()
-    # Keep the first spelling seen (from the newest analysis) for each case-insensitive skill.
     display_names: dict[str, str] = {}
 
     for analysis in analyses:
@@ -93,7 +91,6 @@ def get_job_recommendations(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Rank your saved jobs by semantic similarity to a resume."""
     cache_key = cache.recommendations_key(current_user.id, "jobs", resume_id or "latest", limit)
     cached = cache.get_json(cache_key)
     if cached is not None:
@@ -136,7 +133,6 @@ def get_job_recommendations(
         "recommendations": recommendations,
         "unindexed_job_ids": unindexed,
     }
-    # A partial ranking (some jobs couldn't be indexed) is not cached, so a retry can complete it.
     if not unindexed:
         cache.set_json(cache_key, response, settings.CACHE_TTL_RECOMMENDATIONS_SECONDS)
     return response

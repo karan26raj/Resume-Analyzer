@@ -63,7 +63,6 @@ export function DashboardPage() {
   const jobs = useApi((signal) => jobsApi.list({ signal }))
   const analyses = useApi((signal) => analysisApi.list(undefined, { signal }))
   const insights = useApi((signal) => recommendationsApi.get(8, { signal }))
-  // Ranking needs a resume and at least one job; the API defaults to the newest resume.
   const canRank = Boolean(resumes.data?.length && jobs.data?.length)
   const topMatches = useApi(
     (signal) => (canRank ? recommendationsApi.jobs({ limit: 3 }, { signal }) : Promise.resolve(null)),

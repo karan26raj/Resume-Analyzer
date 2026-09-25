@@ -4,7 +4,6 @@ from app.ai.gemini import GeminiNotConfiguredError, get_gemini_client
 from app.core.config import settings
 
 
-# Gemini accepts at most 100 texts per batch embedding request.
 EMBEDDING_BATCH_SIZE = 100
 
 DOCUMENT_TASK_TYPE = "RETRIEVAL_DOCUMENT"
@@ -45,8 +44,6 @@ def create_embeddings(
     texts: list[str],
     task_type: str = DOCUMENT_TASK_TYPE,
 ) -> tuple[list[list[float]], None]:
-    """Embed texts in batches. Use QUERY_TASK_TYPE for search queries and DOCUMENT_TASK_TYPE for indexed chunks."""
-
     try:
         client = get_gemini_client()
     except GeminiNotConfiguredError as error:
@@ -82,5 +79,4 @@ def create_embeddings(
             "Gemini returned incomplete embeddings"
         )
 
-    # The Gemini API does not report token usage for embeddings.
     return vectors, None

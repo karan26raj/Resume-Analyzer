@@ -64,7 +64,7 @@ def test_upload_pdf_extracts_text_stores_file_and_metadata(resume_client, db_ses
     assert resume.file_type == ".pdf"
     assert resume.raw_text == "Python developer"
     assert resume.file_path
-    assert Path(resume.file_path).is_file()
+    assert (Path(settings.UPLOAD_DIR) / resume.file_path).is_file()
 
 
 def test_upload_docx_extracts_text_stores_file_and_metadata(resume_client, db_session):

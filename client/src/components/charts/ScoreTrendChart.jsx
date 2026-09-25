@@ -19,7 +19,6 @@ export function ScoreTrendChart({ points }) {
   const barWidth = Math.max(4, Math.min(MAX_BAR, slot - 2))
   const y = (score) => MARGIN.top + plotHeight * (1 - score / 100)
 
-  // Label only the first and last columns on the x axis to avoid collisions.
   const labelIndexes = new Set(points.length ? [0, points.length - 1] : [])
   const activePoint = active !== null ? points[active] : null
 
@@ -81,7 +80,6 @@ export function ScoreTrendChart({ points }) {
                 const radius = Math.min(4, barWidth / 2, height)
                 const x = cx - barWidth / 2
                 const bottom = MARGIN.top + plotHeight
-                // 4px rounded data-end, square at the baseline.
                 const path = height
                   ? `M${x},${bottom} V${top + radius} Q${x},${top} ${x + radius},${top} H${x + barWidth - radius} Q${x + barWidth},${top} ${x + barWidth},${top + radius} V${bottom} Z`
                   : ''

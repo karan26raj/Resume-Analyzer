@@ -54,7 +54,8 @@ def test_delete_resume_removes_file_analyses_and_vectors(client, db_session, tmp
     )
     resume_id = upload_response.json()["resume_id"]
     resume = db_session.query(Resume).filter(Resume.id == resume_id).one()
-    stored_file = Path(resume.file_path)
+    assert resume.file_path == Path(resume.file_path).name
+    stored_file = tmp_path / resume.file_path
     assert stored_file.is_file()
 
     job = create_job(db_session, user)
@@ -92,6 +93,19 @@ def test_delete_resume_never_touches_files_outside_upload_dir(client, db_session
     assert outside_file.read_text() == "keep me"
 
 
+def test_delete_resume_with_a_legacy_absolute_path(client, db_session, tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "UPLOAD_DIR", str(tmp_path))
+    stored = tmp_path / "0b7d2c1e.pdf"
+    stored.write_bytes(b"%PDF-1.7")
+    user, headers = create_user_and_headers(client, db_session)
+    resume = create_resume(db_session, user)
+    resume.file_path = r"C:\Users\someone\Resume Analyzer\server\uploads\0b7d2c1e.pdf"
+    db_session.commit()
+
+    assert client.delete(f"/resumes/{resume.id}", headers=headers).status_code == 204
+    assert not stored.exists()
+
+
 def test_delete_resume_of_another_user_returns_404(client, db_session):
     owner, _ = create_user_and_headers(client, db_session)
     resume = create_resume(db_session, owner)
@@ -116,7 +130,6 @@ def test_get_resume_does_not_expose_file_path(client, db_session):
 
 
 def test_background_indexing_failure_does_not_fail_the_request(client, db_session, monkeypatch, worker_sessions):
-    # Real in-process indexing with no Gemini key configured: indexing fails, the request still succeeds.
     monkeypatch.setattr(settings, "AUTO_INDEX_DOCUMENTS", True)
     _, headers = create_user_and_headers(client, db_session)
 

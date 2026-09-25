@@ -62,7 +62,6 @@ def assistant_question(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
         documents.append(("job", job.id))
 
-    # Human-readable names let the model cite "your résumé" or the job title instead of IDs.
     document_names = {
         ("resume", resume_id): filename
         for resume_id, filename in db.query(Resume.id, Resume.filename).filter(Resume.user_id == current_user.id)

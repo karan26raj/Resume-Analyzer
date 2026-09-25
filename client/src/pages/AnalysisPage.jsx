@@ -79,7 +79,6 @@ function SkillCoverage({ matched, missing }) {
 
 function AnalysisResult({ analysis, resumeName, job, fromCache, onRerun, rerunDisabled }) {
   const band = scoreBand(analysis.match_score)
-  // Analyses created before evidence-based scoring have no requirements or breakdown.
   const explainable = Boolean(analysis.score_breakdown && analysis.requirements)
   return (
     <div className="analysis-result">
@@ -252,13 +251,11 @@ export function AnalysisPage() {
   const resumeNames = useMemo(() => new Map((resumes.data || []).map((resume) => [resume.id, resume.filename])), [resumes.data])
   const jobsById = useMemo(() => new Map((jobs.data || []).map((job) => [job.id, job])), [jobs.data])
 
-  // Default to the newest analysis when nothing is selected.
   const selected = useMemo(() => {
     const list = history.data || []
     return (selectedId && list.find((item) => item.id === selectedId)) || (!selectedId ? list[0] : null) || null
   }, [history.data, selectedId])
 
-  // Keep pickers valid once the lists load.
   useEffect(() => {
     if (resumes.data && resumeId && !resumes.data.some((resume) => String(resume.id) === resumeId)) setResumeId('')
   }, [resumes.data, resumeId])
@@ -272,7 +269,6 @@ export function AnalysisPage() {
     try {
       const result = await analysisApi.match(Number(targetResumeId), Number(targetJobId), options)
       if (result.cached) {
-        // An existing analysis: select it where it already sits in the history.
         setCachedId(result.id)
         toast.info(`Showing your recent analysis — score ${result.match_score}`)
       } else {

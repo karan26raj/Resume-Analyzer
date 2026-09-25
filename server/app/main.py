@@ -38,8 +38,6 @@ app = FastAPI(
 
 register_exception_handlers(app)
 
-# Added before CORS so CORS wraps it: error responses (including 500s) still carry CORS headers,
-# letting the browser read the error and its request ID.
 app.add_middleware(RequestContextMiddleware)
 
 if settings.CORS_ORIGINS:

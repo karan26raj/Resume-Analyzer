@@ -81,14 +81,12 @@ def create_analysis(
 
 
 def unit_vector(index: int) -> list[float]:
-    """A one-hot vector of the configured embedding size."""
     vector = [0.0] * settings.EMBEDDING_DIMENSIONS
     vector[index] = 1.0
     return vector
 
 
 def mixed_vector(first: float, second: float) -> list[float]:
-    """A vector in the plane of dimensions 0 and 1; its cosine with unit_vector(0) is first / |v|."""
     vector = [0.0] * settings.EMBEDDING_DIMENSIONS
     vector[0] = first
     vector[1] = second

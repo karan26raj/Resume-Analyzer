@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react'
 
-// Pauses while the tab is hidden so an idle tab doesn't keep polling the API.
 export function usePollWhile(active, refresh, intervalMs = 3000) {
   const refreshRef = useRef(refresh)
   refreshRef.current = refresh

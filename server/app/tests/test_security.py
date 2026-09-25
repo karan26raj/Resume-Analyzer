@@ -1,4 +1,3 @@
-"""Token validation, route protection and upload limits."""
 import re
 from datetime import datetime, timedelta, timezone
 
@@ -25,7 +24,6 @@ def in_minutes(minutes: int) -> datetime:
 
 
 def api_routes() -> set[tuple[str, str]]:
-    """Every (METHOD, path) the API serves, read from its OpenAPI schema."""
     return {
         (method.upper(), path)
         for path, operations in app.openapi()["paths"].items()
@@ -35,7 +33,6 @@ def api_routes() -> set[tuple[str, str]]:
 
 def protected_routes():
     for method, path in api_routes() - PUBLIC_ROUTES:
-        # Path parameters get a harmless value; authentication runs before the handler looks anything up.
         yield method, re.sub(r"\{[^}]+\}", "1", path)
 
 
@@ -43,7 +40,6 @@ PROTECTED = sorted(set(protected_routes()))
 
 
 def test_route_discovery_finds_the_api():
-    # Guards against discovery silently finding nothing (19 protected routes today).
     assert len(PROTECTED) >= 15
 
 
@@ -55,7 +51,6 @@ def test_every_non_public_route_requires_a_token(client, method, path):
 
 
 def test_public_routes_list_matches_the_app():
-    # Guards the test above: a renamed public route must be updated here, not silently skipped.
     assert PUBLIC_ROUTES <= api_routes()
 
 
@@ -131,7 +126,6 @@ def test_login_with_unknown_email_gives_the_same_error_as_a_wrong_password(clien
     unknown = client.post("/auth/login", json={"email": "nobody@example.com", "password": "password123"})
     wrong = client.post("/auth/login", json={"email": user.email, "password": "wrong-password"})
 
-    # The same status and message, so the API doesn't reveal which emails are registered.
     assert unknown.status_code == wrong.status_code == 401
     for field in ("detail", "code"):
         assert unknown.json()[field] == wrong.json()[field]
@@ -149,4 +143,4 @@ def test_oversized_upload_is_rejected(client, db_session, tmp_path, monkeypatch)
     )
 
     assert response.status_code == 413
-    assert list(tmp_path.iterdir()) == []  # nothing is written to disk
+    assert list(tmp_path.iterdir()) == []

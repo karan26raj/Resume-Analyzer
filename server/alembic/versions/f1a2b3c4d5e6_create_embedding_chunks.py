@@ -1,8 +1,3 @@
-"""create embedding chunks
-
-Revision ID: f1a2b3c4d5e6
-Revises: e7f9a3c6d2b4
-"""
 from alembic import op
 import sqlalchemy as sa
 

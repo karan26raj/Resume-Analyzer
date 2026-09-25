@@ -1,32 +1,118 @@
-# Local infrastructure for development: PostgreSQL, Qdrant and Redis.
-# Start with `docker compose up -d`, then run `alembic upgrade head` and `uvicorn app.main:app --reload`.
+# The backend: PostgreSQL, Qdrant, Redis, database migrations, the API and the Celery worker.
+#
+#   docker compose up -d --build     development (docker-compose.override.yml adds live reload)
+#   docker compose -f docker-compose.yml up -d --build     without the development overrides
+#
+# Ports are published on 127.0.0.1 only; change them with POSTGRES_PORT, QDRANT_PORT, REDIS_PORT and API_PORT.
+
+x-app: &app
+  build: .
+  image: resume-analyzer-api
+  env_file: .env
+  environment:
+    # Containers reach each other by service name; these override the localhost values in .env.
+    DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@${DB_HOST:-postgres}:5432/${POSTGRES_DB:-resume_analyzer}
+    QDRANT_HOST: qdrant
+    QDRANT_PORT: "6333"
+    REDIS_URL: redis://redis:6379/0
+    CELERY_BROKER_URL: redis://redis:6379/1
+    UPLOAD_DIR: /app/uploads
+  volumes:
+    - uploads:/app/uploads
+  restart: unless-stopped
+
 services:
   postgres:
-    image: postgres:16
+    image: postgres:18
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: resume_analyzer
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-resume_analyzer}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # PostgreSQL 18+ images keep their data under a version-specific folder inside this path.
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
 
   qdrant:
-    image: qdrant/qdrant
+    image: qdrant/qdrant:v1.19.0
     ports:
-      - "6333:6333"
+      - "127.0.0.1:${QDRANT_PORT:-6333}:6333"
     volumes:
       - qdrant_data:/qdrant/storage
+    healthcheck:
+      # The image has bash but no curl: ask /readyz over a raw TCP connection.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/6333 && printf 'GET /readyz HTTP/1.0\\r\\n\\r\\n' >&3 && read -r status <&3 && [[ $$status == *' 200 '* ]]"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
 
-  # Cache and rate-limit counters only, so nothing needs to survive a restart. volatile-lru evicts
-  # only keys with a TTL, never the per-user cache version counters.
+  # Database 0: cache and rate limits. Database 1: the Celery queue, persisted (AOF) so queued work
+  # survives a restart. volatile-lru only evicts keys with a TTL, never queued tasks or counters.
   redis:
     image: redis:7-alpine
-    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "volatile-lru"]
+    command: ["redis-server", "--appendonly", "yes", "--save", "", "--maxmemory", "256mb", "--maxmemory-policy", "volatile-lru"]
     ports:
-      - "6379:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  migrate:
+    <<: *app
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *app
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  worker:
+    <<: *app
+    command: ["celery", "-A", "app.worker.celery_app:celery_app", "worker", "--pool=threads", "--concurrency=4", "--loglevel=info"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.worker.celery_app:celery_app inspect ping -d celery@$$HOSTNAME --timeout 5"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
 
 volumes:
   postgres_data:
   qdrant_data:
+  redis_data:
+  uploads:

@@ -9,7 +9,6 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Errors worth trying another model for: removed model, rate limit, or overloaded/unavailable servers.
 FALLBACK_STATUS_CODES = {404, 429, 500, 502, 503, 504}
 
 
@@ -19,14 +18,12 @@ class GeminiNotConfiguredError(Exception):
 
 @lru_cache
 def get_gemini_client() -> genai.Client:
-    """Return a shared Gemini client with request timeouts and retries on transient errors."""
     if not settings.GEMINI_API_KEY:
         raise GeminiNotConfiguredError("Gemini API is not configured")
 
     return genai.Client(
         api_key=settings.GEMINI_API_KEY,
         http_options=types.HttpOptions(
-            # HttpOptions.timeout is in milliseconds.
             timeout=settings.GEMINI_TIMEOUT_SECONDS * 1000,
             retry_options=types.HttpRetryOptions(
                 attempts=settings.GEMINI_MAX_RETRIES,
@@ -37,7 +34,6 @@ def get_gemini_client() -> genai.Client:
 
 
 def candidate_models() -> list[str]:
-    """GEMINI_MODEL first, then each fallback model once, in order."""
     return list(dict.fromkeys([settings.GEMINI_MODEL, *settings.GEMINI_FALLBACK_MODELS]))
 
 
@@ -46,7 +42,6 @@ def generate_content_with_fallback(
     contents: str,
     config: types.GenerateContentConfig,
 ) -> tuple[types.GenerateContentResponse, str]:
-    """Call Gemini, moving to the next model when one is unavailable. Returns (response, model_used)."""
     client = get_gemini_client()
     models = candidate_models()
 

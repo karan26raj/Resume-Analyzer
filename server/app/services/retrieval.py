@@ -1,4 +1,3 @@
-"""Retrieve the resume passages most relevant to a job description."""
 import logging
 from dataclasses import dataclass, field
 
@@ -10,8 +9,6 @@ from app.services.indexing import EmptyDocumentError, index_document
 
 logger = logging.getLogger(__name__)
 
-# Semantic similarity is the mean of the best few passage scores, so one lucky chunk
-# can't dominate and a long resume isn't penalised for irrelevant sections.
 TOP_K_FOR_SIMILARITY = 3
 
 
@@ -33,10 +30,6 @@ def retrieve_resume_evidence(
     job_text: str,
     limit: int | None = None,
 ) -> RetrievedEvidence:
-    """Embed the job description and find the closest passages of this resume in Qdrant.
-
-    If the resume has not been indexed yet (e.g. background indexing failed), it is indexed first.
-    """
     limit = limit or settings.ANALYSIS_EVIDENCE_CHUNKS
     query = job_text[: settings.MAX_QUERY_EMBED_CHARACTERS]
 

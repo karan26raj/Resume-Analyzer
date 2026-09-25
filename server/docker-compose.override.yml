@@ -1,0 +1,25 @@
+# Development overrides, applied automatically by `docker compose up`: run the code from this folder
+# and restart on changes. Skip them with `docker compose -f docker-compose.yml up`.
+services:
+  api:
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--no-access-log"]
+    environment:
+      # File events from a Windows/macOS host don't reach containers reliably; poll instead.
+      WATCHFILES_FORCE_POLLING: "true"
+    volumes:
+      - ./app:/app/app
+      - ./alembic:/app/alembic
+      - ./uploads:/app/uploads
+
+  worker:
+    command: ["watchfiles", "--filter", "python", "celery -A app.worker.celery_app:celery_app worker --pool=threads --concurrency=4 --loglevel=info", "app"]
+    environment:
+      WATCHFILES_FORCE_POLLING: "true"
+    volumes:
+      - ./app:/app/app
+      - ./uploads:/app/uploads
+
+  migrate:
+    volumes:
+      - ./alembic:/app/alembic
+      - ./app:/app/app

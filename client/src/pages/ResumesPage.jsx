@@ -26,7 +26,6 @@ import { EmptyState, ErrorState, SkeletonCards, Spinner } from '../components/ui
 import { DocumentIllustration } from '../components/ui/Illustrations'
 import { fileTypeLabel, formatBytes, formatDate, formatRelative, parseApiDate } from '../utils/format'
 
-// Mirrors the server's rules in app/api/resumes.py and MAX_UPLOAD_SIZE_BYTES.
 const MAX_BYTES = 10 * 1024 * 1024
 const ALLOWED = ['.pdf', '.docx']
 
@@ -116,7 +115,6 @@ export function ResumesPage() {
     if (validationError) return
 
     const { promise, abort } = resumesApi.upload(file, (fraction) => {
-      // Once every byte is sent the server still validates and extracts text.
       updateUpload(id, fraction >= 1 ? { progress: 1, status: 'processing' } : { progress: fraction })
     })
     aborters.current.set(id, abort)

@@ -20,7 +20,6 @@ import { EmptyState, InlineError, Spinner } from '../components/ui/States'
 import { ChatIllustration } from '../components/ui/Illustrations'
 import { formatNumber } from '../utils/format'
 
-// Mirrors TechnologySource in server/app/schemas/interview.py
 const SOURCE = {
   both: { label: 'In the job and your résumé', tone: 'good' },
   job: { label: 'Not on your résumé — prepare for it', tone: 'warning' },
@@ -52,7 +51,6 @@ function QuestionItem({ item, number, showGuides }) {
               <FileText size={13} aria-hidden="true" /> “{item.resume_evidence}”
             </blockquote>
           )}
-          {/* Remounted when "show all" changes, so it opens or closes with it. */}
           <details key={String(showGuides)} className="answer-guide" open={showGuides}>
             <summary>
               <BookOpen size={14} aria-hidden="true" /> Answer guide
@@ -111,7 +109,6 @@ export function InterviewPage() {
   const [result, setResult] = useState(null)
   const [showGuides, setShowGuides] = useState(false)
 
-  // Keep pickers valid once the lists load.
   useEffect(() => {
     if (resumes.data && resumeId && !resumes.data.some((resume) => String(resume.id) === resumeId)) setResumeId('')
   }, [resumes.data, resumeId])

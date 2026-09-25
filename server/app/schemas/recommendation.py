@@ -18,7 +18,6 @@ class JobRecommendation(BaseModel):
     title: str
     company: str
     similarity: float
-    # Similarity calibrated to 0-100 (the same scale as the analysis score's semantic component).
     match_score: int
     reason: str
     resume_passage: str
@@ -30,5 +29,4 @@ class JobRecommendation(BaseModel):
 class JobRecommendationsResponse(BaseModel):
     resume_id: int
     recommendations: list[JobRecommendation]
-    # Jobs that could not be indexed (e.g. embedding API down) and were therefore not ranked.
     unindexed_job_ids: list[int]

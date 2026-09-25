@@ -1,6 +1,3 @@
-"""Shared Redis connection. Every call goes through `run()`, which returns a default when Redis is
-disabled or failing, and skips Redis for a while after a failure (a simple circuit breaker).
-"""
 import logging
 import threading
 import time
@@ -44,7 +41,6 @@ def get_redis() -> redis.Redis | None:
 
 
 def set_redis_client(client: redis.Redis | None) -> None:
-    """Replace the client (tests use fakeredis) and reset the circuit breaker."""
     global _client, _initialized, _skip_until
     with _lock:
         _client = client
@@ -53,7 +49,6 @@ def set_redis_client(client: redis.Redis | None) -> None:
 
 
 def run(operation: Callable[[redis.Redis], T], default: T) -> T:
-    """Run `operation` against Redis, or return `default` if Redis is disabled or failing."""
     global _skip_until
     client = get_redis()
     if client is None or time.monotonic() < _skip_until:
@@ -71,7 +66,6 @@ def run(operation: Callable[[redis.Redis], T], default: T) -> T:
 
 
 def redis_status() -> str:
-    """'connected', 'unavailable' or 'disabled', for the health check."""
     if get_redis() is None:
         return "disabled"
     return "connected" if run(lambda client: client.ping(), False) else "unavailable"

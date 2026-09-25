@@ -16,7 +16,6 @@ PAYLOAD_INDEXES = {
 
 @lru_cache
 def get_qdrant_client() -> QdrantClient:
-    """Create the Qdrant client lazily so importing the app does not require a running Qdrant."""
     if settings.QDRANT_LOCATION:
         return QdrantClient(location=settings.QDRANT_LOCATION)
 
@@ -50,7 +49,6 @@ def ensure_collection() -> None:
                 f"but EMBEDDING_DIMENSIONS is {settings.EMBEDDING_DIMENSIONS}"
             )
 
-    # Indexes keep the per-user and per-document filters fast. Creating an existing index is a no-op.
     for field_name, field_schema in PAYLOAD_INDEXES.items():
         client.create_payload_index(
             collection_name=collection_name,

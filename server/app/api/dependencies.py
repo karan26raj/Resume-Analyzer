@@ -34,7 +34,6 @@ def get_current_user(
 
         subject = payload.get("sub")
 
-        # Only tokens we issued carry a numeric user ID; anything else is invalid, not a server error.
         if not isinstance(subject, str) or not subject.isdigit():
             raise credentials_exception
 

@@ -1,4 +1,3 @@
-"""Interview coach: questions per technology, verified against the resume and the job."""
 import json
 from types import SimpleNamespace
 
@@ -66,9 +65,9 @@ def test_source_is_decided_from_the_documents():
     kept, skipped = verify(group("FastAPI"), group("Kubernetes"), group("Redux"))
 
     assert [(item["technology"], item["source"]) for item in kept] == [
-        ("FastAPI", "both"),       # in the job and the resume
-        ("Kubernetes", "job"),     # a gap to prepare for
-        ("Redux", "resume"),       # only on the resume
+        ("FastAPI", "both"),
+        ("Kubernetes", "job"),
+        ("Redux", "resume"),
     ]
     assert skipped == []
 
@@ -150,7 +149,6 @@ def test_answer_tips_are_capped():
 
 
 def test_gemini_schema_has_no_nested_list_limits():
-    # Gemini rejects nested arrays that both carry maxItems (400 INVALID_ARGUMENT); limits live in code.
     schema = json.dumps(LLMInterviewOutput.model_json_schema())
 
     assert "maxItems" not in schema and "minItems" not in schema
@@ -308,7 +306,7 @@ def test_counts_towards_the_ai_rate_limit(client, db_session, fake_gemini, monke
     monkeypatch.setattr(settings, "RATE_LIMIT_AI_GENERATE", 1)
 
     assert ask(client, headers, resume, job).status_code == 200
-    assert ask(client, headers, resume, job).status_code == 200  # cache hit: free
+    assert ask(client, headers, resume, job).status_code == 200
     assert ask(client, headers, resume, job, force=True).status_code == 429
 
 

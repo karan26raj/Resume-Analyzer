@@ -24,7 +24,6 @@ export function AuthPage({ mode }) {
     return <Navigate to={location.state?.from || '/'} replace />
   }
 
-  // Validation mirrors the API: a valid email, and 8-100 character passwords on register.
   const errors = {
     email: !email ? 'Email is required' : !EMAIL_PATTERN.test(email) ? 'Enter a valid email address' : null,
     password: !password

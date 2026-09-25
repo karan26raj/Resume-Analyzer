@@ -23,7 +23,6 @@ export function AuthProvider({ children }) {
     setSessionExpired(reason === 'expired')
   }, [])
 
-  // Any 401 from the API means the token is no longer valid.
   useEffect(() => {
     setUnauthorizedHandler(() => logout('expired'))
     return () => setUnauthorizedHandler(null)
@@ -47,7 +46,6 @@ export function AuthProvider({ children }) {
     return () => controller.abort()
   }, [token, attempt, logout])
 
-  // End the session exactly when the JWT expires.
   useEffect(() => {
     const expiry = getTokenExpiry(token)
     if (!expiry) return undefined

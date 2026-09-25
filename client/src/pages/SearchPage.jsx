@@ -28,7 +28,6 @@ function escapeRegExp(text) {
 
 const STOPWORDS = new Set(['and', 'the', 'for', 'with', 'from', 'that', 'this', 'are', 'was', 'you', 'your', 'have', 'has', 'into', 'about'])
 
-// Highlights whole-word matches of the query's meaningful words inside a retrieved chunk.
 function Highlighted({ text, query }) {
   const terms = [
     ...new Set(

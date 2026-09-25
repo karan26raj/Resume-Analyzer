@@ -1,0 +1,20 @@
+venv/
+.venv/
+**/__pycache__/
+**/*.pyc
+.pytest_cache/
+
+# Secrets are passed at runtime (env_file), never baked into the image.
+.env
+.env.*
+
+uploads/
+app/tests/
+
+.git/
+.gitignore
+.vscode/
+.idea/
+Dockerfile
+docker-compose*.yml
+README.md

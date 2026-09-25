@@ -8,26 +8,24 @@ from fastapi.testclient import TestClient
 
 from app.core.config import settings
 
-# Tests must never reach real external services: use an in-memory Qdrant,
-# skip background indexing and make any accidental Gemini call fail fast.
 settings.QDRANT_LOCATION = ":memory:"
 settings.AUTO_INDEX_DOCUMENTS = False
 settings.GEMINI_API_KEY = None
-# Tests never publish to a real broker; queue tests enable it and run tasks eagerly (in-process).
 settings.TASK_QUEUE_ENABLED = False
 
-from app.ai.gemini import get_gemini_client  # noqa: E402
-from app.ai.qdrant_client import ensure_collection, get_qdrant_client  # noqa: E402
-from app.core.database import Base, get_db  # noqa: E402
-from app.core.redis import set_redis_client  # noqa: E402
-from app.main import app  # noqa: E402
-from app.services import indexing as indexing_service  # noqa: E402
-from app.worker.celery_app import celery_app  # noqa: E402
+from app.ai.gemini import get_gemini_client
+from app.ai.qdrant_client import ensure_collection, get_qdrant_client
+from app.core.database import Base, get_db
+from app.core.redis import set_redis_client
+from app.main import app
+from app.services import indexing as indexing_service
+from app.worker.celery_app import celery_app
 
 get_qdrant_client.cache_clear()
 get_gemini_client.cache_clear()
 
 TEST_DATABASE_URL = settings.TEST_DATABASE_URL
+assert TEST_DATABASE_URL, "Set TEST_DATABASE_URL (a separate database) to run the tests"
 
 engine = create_engine(TEST_DATABASE_URL)
 
@@ -37,7 +35,6 @@ TestingSessionLocal = sessionmaker(
     autocommit=False
 )
 
-# Background indexing opens its own sessions; never let a test reach the development database.
 indexing_service.SessionLocal = TestingSessionLocal
 celery_app.conf.task_always_eager = True
 celery_app.conf.task_eager_propagates = True
@@ -54,7 +51,6 @@ def setup_database():
 
 @pytest.fixture(autouse=True)
 def redis_client():
-    """A fresh in-memory Redis (fakeredis) for each test: empty cache, zeroed rate limits."""
     client = fakeredis.FakeRedis(decode_responses=True)
     set_redis_client(client)
 
@@ -65,7 +61,6 @@ def redis_client():
 
 @pytest.fixture
 def qdrant():
-    """A fresh in-memory Qdrant collection for each test."""
     get_qdrant_client.cache_clear()
     ensure_collection()
 
@@ -92,7 +87,6 @@ def db_session():
 
 @pytest.fixture
 def worker_sessions(db_session, monkeypatch):
-    """Make background indexing use the test's connection, so it sees (and rolls back with) the test's data."""
     connection = db_session.get_bind()
     monkeypatch.setattr(indexing_service, "SessionLocal", lambda: TestingSessionLocal(bind=connection))
 

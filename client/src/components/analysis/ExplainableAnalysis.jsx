@@ -12,7 +12,6 @@ import {
 } from 'lucide-react'
 import { similarityPercent } from '../../utils/format'
 
-// Mirrors the component names in server/app/services/scoring.py
 const COMPONENT_LABELS = {
   skills: 'Skills',
   experience: 'Experience',

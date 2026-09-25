@@ -1,4 +1,3 @@
-"""Logging shared by the API and the worker; every record carries the current request ID."""
 import json
 import logging
 import sys
@@ -18,7 +17,6 @@ def _record_factory(*args, **kwargs) -> logging.LogRecord:
     return record
 
 
-# Installed at import so every record (including ones captured by pytest) has request_id.
 logging.setLogRecordFactory(_record_factory)
 
 
@@ -40,7 +38,6 @@ _HANDLER_NAME = "resume-analyzer"
 
 
 def configure_logging(level: str = "INFO", json_format: bool = False) -> None:
-    """Send application logs to stderr. Safe to call more than once."""
     root = logging.getLogger()
     root.setLevel(level.upper())
 

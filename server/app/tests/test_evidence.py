@@ -1,4 +1,3 @@
-"""Grounding checks used by match analysis and resume rewriting."""
 import pytest
 
 from app.services.evidence import is_supported, salient_terms, unsupported_terms
@@ -15,9 +14,9 @@ Worked with Node.js and C++ at Northwind Labs."""
     "quote",
     [
         "Built REST APIs in Python with FastAPI and PostgreSQL.",
-        "built rest apis in python   with fastapi",               # case / whitespace
-        "Added Redis caching that cut p95 latency by 40 %",       # small formatting difference
-        "Built REST APIs in Python using FastAPI and PostgreSQL",  # one word paraphrased
+        "built rest apis in python   with fastapi",
+        "Added Redis caching that cut p95 latency by 40 %",
+        "Built REST APIs in Python using FastAPI and PostgreSQL",
     ],
 )
 def test_supported_quotes(quote):
@@ -59,7 +58,6 @@ def test_unsupported_terms_flags_invented_technologies_and_metrics():
 
 
 def test_terms_must_match_whole_words():
-    # "95" appears only inside "p95", and "Java" only inside "JavaScript": both count as invented.
     assert unsupported_terms("Reached 95% coverage in Java.", RESUME) == ["95", "Java"]
     assert unsupported_terms("Reached 95% coverage in Java.", RESUME + " JavaScript") == ["95", "Java"]
 

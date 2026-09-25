@@ -1,6 +1,3 @@
-"""Interview coach: Gemini writes 4-5 questions per technology; each group is then verified in code
-(technology mentioned in the job or resume, resume quotes real, duplicates removed).
-"""
 import json
 import logging
 
@@ -78,7 +75,6 @@ def _source(in_job: bool, in_resume: bool) -> str:
 
 
 def verify_questions(output: LLMInterviewOutput, resume_text: str, job_text: str) -> tuple[list[dict], list[dict]]:
-    """Split the model's technology groups into (kept, skipped) using the rules in the module docstring."""
     kept: list[dict] = []
     skipped: list[dict] = []
     seen: set[str] = set()
@@ -114,7 +110,6 @@ def verify_questions(output: LLMInterviewOutput, resume_text: str, job_text: str
                     "difficulty": item.difficulty,
                     "what_they_assess": item.what_they_assess.strip(),
                     "answer_tips": [tip.strip() for tip in item.answer_tips if tip.strip()][:MAX_ANSWER_TIPS],
-                    # A quote that isn't really in the resume would misrepresent the candidate.
                     "resume_evidence": evidence if evidence and is_supported(evidence, resume_text) else None,
                 }
             )

@@ -12,7 +12,6 @@ class AnalysisServiceError(Exception):
     pass
 
 
-# The model gives each requirement a verdict and a verbatim quote; the score is computed in code.
 SYSTEM_INSTRUCTIONS = """
 You are a precise resume-to-job-description matching assistant.
 
@@ -89,8 +88,6 @@ def generate_match(
     job_description: str,
     retrieved_passages: list[dict] | None = None,
 ) -> tuple[LLMMatchOutput, int | None, int | None, str]:
-    """Returns (assessment, input_tokens, output_tokens, model_used)."""
-
     try:
         response, model_used = generate_content_with_fallback(
             contents=_build_user_message(
@@ -104,8 +101,6 @@ def generate_match(
                 system_instruction=SYSTEM_INSTRUCTIONS,
                 temperature=settings.GEMINI_TEMPERATURE,
                 response_mime_type="application/json",
-                # response_json_schema accepts standard JSON Schema; the older response_schema
-                # field rejects the additionalProperties that extra="forbid" models emit.
                 response_json_schema=LLMMatchOutput.model_json_schema(),
             ),
         )

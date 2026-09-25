@@ -1,4 +1,3 @@
-"""Request IDs, the error format, safe messages for external failures, and logging."""
 import json
 import logging
 import re
@@ -38,7 +37,6 @@ def gemini_error(code: int, message: str):
 
 
 def gemini_fails_with(monkeypatch, error):
-    """Run the real analysis pipeline up to the Gemini call, which raises `error`."""
     monkeypatch.setattr(
         analysis_service,
         "retrieve_resume_evidence",
@@ -145,7 +143,7 @@ def test_unhandled_error_returns_a_safe_500_and_logs_the_traceback(client, db_se
     assert body["detail"] == "Something went wrong on our side. Please try again."
     [record] = [r for r in caplog.records if r.name == "app.errors"]
     assert record.exc_info and "secret internal detail" in str(record.exc_info[1])
-    assert record.request_id == body["request_id"]  # the user's reference finds the traceback
+    assert record.request_id == body["request_id"]
 
 
 def test_database_outage_returns_503(client, db_session, monkeypatch):
@@ -264,7 +262,7 @@ def test_worker_logs_carry_the_request_id_of_the_upload(client, db_session, monk
     seen = []
 
     def create_embeddings(chunks, **kwargs):
-        seen.append(request_id_var.get())  # what the task's log lines would carry
+        seen.append(request_id_var.get())
         return [unit_vector(0) for _ in chunks], None
 
     monkeypatch.setattr(indexing_service, "create_embeddings", create_embeddings)

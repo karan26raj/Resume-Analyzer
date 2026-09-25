@@ -105,7 +105,6 @@ def index_document_endpoint(
     except EmbeddingServiceError as error:
         raise upstream_failure(error)
 
-
     mark_indexed(document, chunk_count)
     db.commit()
 

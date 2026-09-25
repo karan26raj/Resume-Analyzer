@@ -1,12 +1,7 @@
-"""Explainable match score computed in code: skills 40%, experience 25%, education 10%, semantic 25%.
-
-A component that can't be measured is dropped and its weight shared proportionally by the rest.
-"""
 from app.core.config import settings
 
 
 STATUS_CREDIT = {"met": 1.0, "partial": 0.5, "missing": 0.0}
-# Required requirements count twice as much as preferred ones.
 IMPORTANCE_WEIGHT = {"required": 2.0, "preferred": 1.0}
 
 CATEGORY_COMPONENTS = (("skills", "skill"), ("experience", "experience"), ("education", "education"))
@@ -26,7 +21,6 @@ def component_weights() -> dict[str, float]:
 
 
 def category_score(requirements: list[dict], category: str) -> tuple[float | None, str]:
-    """Importance-weighted share of requirements met (partial counts half). None if there are none."""
     relevant = [item for item in requirements if item["category"] == category]
     if not relevant:
         return None, f"No {category} requirements identified"
@@ -45,7 +39,6 @@ def semantic_score(
     floor: float | None = None,
     ceiling: float | None = None,
 ) -> tuple[float | None, str]:
-    """Map cosine similarity onto 0-100 using a floor/ceiling calibration (defaults: analysis settings)."""
     if similarity is None:
         return None, "Semantic retrieval unavailable"
 
@@ -57,7 +50,6 @@ def semantic_score(
 
 
 def compute_match_score(requirements: list[dict], similarity: float | None) -> tuple[int, dict]:
-    """Returns (score 0-100, breakdown). Raises ScoringError when nothing can be measured."""
     weights = component_weights()
 
     raw: list[tuple[str, float | None, str]] = [

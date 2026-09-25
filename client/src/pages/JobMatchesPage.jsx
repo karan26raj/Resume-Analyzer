@@ -9,7 +9,6 @@ import { EmptyState, ErrorState, InlineError, Skeleton } from '../components/ui/
 import { BriefcaseIllustration, DocumentIllustration } from '../components/ui/Illustrations'
 import { scoreBand, similarityPercent } from '../utils/format'
 
-// Upper bound accepted by GET /recommendations/jobs
 const MATCH_LIMIT = 50
 
 function MatchCard({ match, rank, resumeId }) {
@@ -77,7 +76,6 @@ export function JobMatchesPage() {
   const resumes = useApi((signal) => resumesApi.list({ signal }))
   const [resumeId, setResumeId] = useState(params.get('resume') || '')
 
-  // Default to the newest resume, and drop a selection that no longer exists.
   useEffect(() => {
     if (!resumes.data?.length) return
     if (!resumeId || !resumes.data.some((resume) => String(resume.id) === resumeId)) {

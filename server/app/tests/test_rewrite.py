@@ -1,4 +1,3 @@
-"""Resume rewriting that never invents experience."""
 import json
 from types import SimpleNamespace
 
@@ -35,7 +34,6 @@ def test_truthful_rephrasing_is_accepted():
 
 
 def test_job_vocabulary_the_resume_does_not_contain_is_rejected():
-    # This resume never says "REST", so a rewrite may not add it even though the job asks for it.
     item = suggestion(
         "Worked on backend APIs using Python and FastAPI at Northwind Labs.",
         "Built REST APIs with Python and FastAPI at Northwind Labs.",
@@ -174,7 +172,7 @@ def test_rewrite_resume_splits_accepted_and_rejected(fake_gemini):
     assert [item["unsupported_terms"] for item in result["rejected"]] == [["Kubernetes"]]
     assert (result["input_tokens"], result["output_tokens"]) == (500, 120)
     call = models.calls[0]
-    assert "Worked on backend APIs" in call["contents"]           # retrieved passages are in the prompt
+    assert "Worked on backend APIs" in call["contents"]
     assert "NEVER add a technology" in call["config"].system_instruction
     assert call["config"].response_mime_type == "application/json"
 

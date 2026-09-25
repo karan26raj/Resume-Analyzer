@@ -3,13 +3,11 @@ from docx import Document
 
 
 def extract_text_from_pdf(file_path: str) -> str:
-    """Extract text from every page of a PDF document."""
     with pymupdf.open(file_path) as document:
         return "\n".join(page.get_text() for page in document).strip()
 
 
 def extract_text_from_docx(file_path: str) -> str:
-    """Extract paragraph and table text from a DOCX document."""
     document = Document(file_path)
     text_parts = [paragraph.text for paragraph in document.paragraphs]
 

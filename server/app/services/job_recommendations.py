@@ -1,4 +1,3 @@
-"""Rank a user's saved jobs by semantic similarity to one of their resumes (no LLM call)."""
 import logging
 
 from app.ai.vector_store import get_document_points, indexed_document_ids, search_chunks
@@ -50,7 +49,6 @@ def _ensure_resume_points(user_id: int, resume: Resume):
 
 
 def _ensure_jobs_indexed(user_id: int, jobs: list[Job]) -> list[int]:
-    """Index any job missing from Qdrant. Returns the IDs of jobs that still couldn't be indexed."""
     indexed = indexed_document_ids(user_id, "job")
     failed = []
     for job in jobs:
@@ -72,10 +70,6 @@ def recommend_jobs(
     latest_analyses: dict[int, tuple[int, int]],
     limit: int,
 ) -> tuple[list[dict], list[int]]:
-    """Returns (recommendations, unindexed_job_ids).
-
-    `latest_analyses` maps job_id -> (analysis_id, match_score) of the newest analysis for this resume.
-    """
     if not jobs:
         return [], []
 
@@ -83,7 +77,6 @@ def recommend_jobs(
     unindexed = _ensure_jobs_indexed(user_id, jobs)
     jobs_by_id = {job.id: job for job in jobs}
 
-    # Enough neighbours per resume chunk that every candidate job can surface.
     per_chunk_limit = max(20, limit * 5)
     best: dict[int, tuple[float, str, str]] = {}
     for point in resume_points:
@@ -91,7 +84,7 @@ def recommend_jobs(
         for hit in hits:
             job_id = hit.payload["document_id"]
             if job_id not in jobs_by_id:
-                continue  # stale vectors of a deleted job
+                continue
             if job_id not in best or hit.score > best[job_id][0]:
                 best[job_id] = (float(hit.score), point.payload["content"], hit.payload["content"])
 

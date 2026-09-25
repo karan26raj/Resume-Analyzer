@@ -105,7 +105,6 @@ code {
   background: transparent;
 }
 
-/* Utilities */
 .accent-text {
   color: var(--accent);
 }

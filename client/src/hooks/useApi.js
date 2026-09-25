@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-// `reload()` refetches while keeping the previous data visible (no skeleton flash).
 export function useApi(fetcher, deps = []) {
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
@@ -37,7 +36,6 @@ export function useApi(fetcher, deps = []) {
     const controller = new AbortController()
     run(controller.signal)
     return () => controller.abort()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps)
 
   const reload = useCallback(() => run(), [run])

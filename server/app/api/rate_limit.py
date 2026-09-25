@@ -1,4 +1,3 @@
-"""Fixed-window rate limiting in Redis. Fails open: if Redis is unavailable, requests are allowed."""
 import math
 import time
 from dataclasses import dataclass
@@ -35,7 +34,6 @@ def ai_embed_limit() -> Limit:
 
 
 def enforce(rule: Limit, identifier: str) -> None:
-    """Count one request; raise 429 with a Retry-After header once the window's limit is exceeded."""
     if not settings.RATE_LIMIT_ENABLED:
         return
 
@@ -61,13 +59,10 @@ def enforce(rule: Limit, identifier: str) -> None:
 
 
 def client_ip(request: Request) -> str:
-    # Behind a reverse proxy this is the proxy's address, not the client's.
     return request.client.host if request.client else "unknown"
 
 
 def limit_per_user(rule_factory):
-    """Dependency that rate-limits the authenticated user, e.g. Depends(limit_per_user(ai_embed_limit))."""
-
     def dependency(current_user: User = Depends(get_current_user)) -> User:
         enforce(rule_factory(), f"user:{current_user.id}")
         return current_user

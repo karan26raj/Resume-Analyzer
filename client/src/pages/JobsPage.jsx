@@ -13,7 +13,6 @@ import { EmptyState, ErrorState, InlineError, SkeletonCards, Spinner } from '../
 import { BriefcaseIllustration } from '../components/ui/Illustrations'
 import { formatDate, formatRelative } from '../utils/format'
 
-// Limits from server/app/schemas/job.py
 const LIMITS = { title: 255, company: 255, description: 10000 }
 const EMPTY_FORM = { title: '', company: '', description: '' }
 

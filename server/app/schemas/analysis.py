@@ -12,26 +12,20 @@ RequirementStatus = Literal["met", "partial", "missing"]
 class MatchRequest(BaseModel):
     resume_id: int = Field(gt=0)
     job_id: int = Field(gt=0)
-    # Skip the cache and always run a new analysis.
     force: bool = False
 
 
 class RequirementAssessment(BaseModel):
-    """One job requirement judged against the resume (Gemini output)."""
-
     model_config = ConfigDict(extra="forbid")
 
     requirement: str = Field(min_length=1, max_length=120)
     category: RequirementCategory
     importance: RequirementImportance
     status: RequirementStatus
-    # Short verbatim quote from the resume; empty when the requirement is missing.
     evidence: str = Field(max_length=400)
 
 
 class LLMMatchOutput(BaseModel):
-    """What Gemini returns. The match score is NOT asked of the model - it is computed in code."""
-
     model_config = ConfigDict(extra="forbid")
 
     requirements: list[RequirementAssessment] = Field(max_length=30)
@@ -41,10 +35,7 @@ class LLMMatchOutput(BaseModel):
 
 
 class RequirementResult(RequirementAssessment):
-    """A requirement after server-side verification of its evidence."""
-
     evidence_verified: bool
-    # The model's own verdict before verification; differs from `status` when it was downgraded.
     model_status: RequirementStatus
 
 
@@ -68,8 +59,6 @@ class RetrievedPassage(BaseModel):
 
 
 class MatchOutput(BaseModel):
-    """The analysis fields every client relies on (unchanged since the first version)."""
-
     model_config = ConfigDict(extra="forbid")
 
     match_score: int = Field(ge=0, le=100)
@@ -91,11 +80,9 @@ class MatchResponse(MatchOutput):
     output_tokens: int | None
     created_at: datetime
 
-    # Null for analyses created before evidence-based scoring.
     requirements: list[RequirementResult] | None = None
     score_breakdown: ScoreBreakdown | None = None
     semantic_similarity: float | None = None
     retrieved_evidence: list[RetrievedPassage] | None = None
 
-    # True when POST /analysis/match returned a recent stored analysis instead of calling Gemini.
     cached: bool = False

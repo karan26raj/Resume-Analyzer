@@ -1,7 +1,6 @@
 import { AlertTriangle, CheckCircle2, CircleDashed, Clock } from 'lucide-react'
 import { Spinner } from './States'
 
-// Mirrors IndexStatus in server/app/models/index_status.py
 const STATUS = {
   pending: { label: 'Not indexed', tone: 'neutral', icon: CircleDashed, hint: 'Not in the search index yet. Use Re-index to add it.' },
   queued: { label: 'Queued', tone: 'neutral', icon: Clock, hint: 'Waiting for the background worker.' },
@@ -19,7 +18,6 @@ export function isIndexing(document) {
 export function IndexStatusBadge({ document }) {
   const status = STATUS[document.index_status] || STATUS.pending
   const Icon = status.icon
-  // A queued document with an error is waiting to retry after a failed attempt.
   const detail = document.index_error ? `${status.hint} ${document.index_error}` : status.hint
   const chunks = document.index_status === 'indexed' && document.chunk_count
     ? ` · ${document.chunk_count} chunk${document.chunk_count === 1 ? '' : 's'}`

@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
 
-// Callback ref so the observer re-attaches when the measured element remounts
-// (e.g. switching a chart from table view back to chart view).
 export function useElementWidth() {
   const [element, setElement] = useState(null)
   const [width, setWidth] = useState(0)

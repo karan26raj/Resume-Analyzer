@@ -61,9 +61,6 @@ def test_match_creates_and_stores_analysis(client, db_session, monkeypatch):
 
     assert response.status_code == 201
     data = response.json()
-    # Skills: required Python + PostgreSQL met (4/4 weight), required Docker (0/2) and preferred AWS (0/1) missing
-    # -> 4 / 7 = 57.1. Semantic: (0.65 - 0.45) / 0.40 = 50.0.
-    # Experience and education have no requirements, so skills and semantic share the weight 40:25.
     expected = round(57.1 * 0.40 / 0.65 + 50.0 * 0.25 / 0.65)
     assert data["match_score"] == expected
     assert data["matched_skills"] == ["Python", "PostgreSQL"]
@@ -84,7 +81,6 @@ def test_match_creates_and_stores_analysis(client, db_session, monkeypatch):
 
 
 def test_match_response_keeps_every_original_field(client, db_session, monkeypatch):
-    # The frontend depends on these fields; new fields may only be added.
     user, headers = create_user_and_headers(client, db_session)
     resume = create_resume(db_session, user, raw_text=RESUME_TEXT)
     job = create_job(db_session, user)

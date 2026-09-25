@@ -1,4 +1,3 @@
-"""Background indexing on the Celery worker, with status tracking and fallbacks."""
 import pytest
 from celery.exceptions import Retry
 from kombu.exceptions import OperationalError
@@ -17,13 +16,11 @@ from app.worker.tasks import index_document_task
 
 @pytest.fixture(autouse=True)
 def vector_store(qdrant):
-    """Every test here gets a fresh in-memory Qdrant collection."""
     return qdrant
 
 
 @pytest.fixture
 def fake_embeddings(monkeypatch):
-    """Real chunking and a real (in-memory) Qdrant; only the Gemini embedding call is faked."""
     calls = []
 
     def create_embeddings(chunks, **kwargs):
@@ -42,7 +39,6 @@ def auto_index(monkeypatch, worker_sessions):
 
 @pytest.fixture
 def queue_enabled(monkeypatch, auto_index):
-    """Publish to the (eager, in-process) Celery queue and record what was published."""
     monkeypatch.setattr(settings, "TASK_QUEUE_ENABLED", True)
     published = []
     original = index_document_task.apply_async
@@ -145,7 +141,6 @@ def test_falls_back_to_in_process_when_the_broker_is_down(client, db_session, au
     first = client.post("/jobs", headers=headers, json=body).json()["id"]
     second = client.post("/jobs", headers=headers, json=body).json()["id"]
 
-    # Both are indexed in-process; after the first failure the queue isn't even tried (circuit breaker).
     assert len(attempts) == 1
     for job_id in (first, second):
         assert client.get(f"/jobs/{job_id}", headers=headers).json()["index_status"] == "indexed"
@@ -159,7 +154,7 @@ def test_transient_failure_is_retried_with_backoff(db_session, worker_sessions, 
     with pytest.raises(Retry) as retry:
         index_document_task.apply(args=("job", job.id), retries=1, throw=True)
 
-    assert retry.value.when == settings.INDEX_TASK_RETRY_BASE_SECONDS * 2  # second retry waits 2x
+    assert retry.value.when == settings.INDEX_TASK_RETRY_BASE_SECONDS * 2
     job = reload(db_session, job)
     assert job.index_status == IndexStatus.QUEUED
     assert job.index_error.startswith("Retrying after an error: 503 UNAVAILABLE")
@@ -213,7 +208,7 @@ def test_document_deleted_during_indexing_leaves_no_vectors(client, db_session, 
     job = create_job(db_session, user)
 
     def embed_then_delete(chunks, **kwargs):
-        db_session.delete(db_session.get(Job, job.id))  # the user deletes it meanwhile
+        db_session.delete(db_session.get(Job, job.id))
         db_session.commit()
         return [unit_vector(0) for _ in chunks], None
 
@@ -274,7 +269,6 @@ def failing_embeddings(chunks, **kwargs):
 
 
 def create_user_and_headers_direct(db_session):
-    """A user row without going through the API (these tests call the task directly)."""
     from app.models.user import User
 
     user = User(email=f"worker-{id(db_session)}-{db_session.query(User).count()}@example.com", password_hash="x")
@@ -291,7 +285,7 @@ def test_sync_marks_documents_found_in_qdrant(db_session):
     in_qdrant = create_resume(db_session, user)
     missing = create_resume(db_session, user)
     lost = create_job(db_session, user)
-    lost.index_status = IndexStatus.INDEXED  # its vectors were wiped
+    lost.index_status = IndexStatus.INDEXED
     db_session.commit()
     upsert_chunks(user_id=user.id, document_type="resume", document_id=in_qdrant.id, chunks=["x"], embeddings=[unit_vector(0)])
 

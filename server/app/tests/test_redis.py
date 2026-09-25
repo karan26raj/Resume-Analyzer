@@ -1,4 +1,3 @@
-"""Redis caching, cache invalidation and rate limiting."""
 import fakeredis
 import pytest
 
@@ -15,7 +14,6 @@ from app.tests.test_resumes import _pdf_bytes
 
 
 def count_gemini_matches(monkeypatch):
-    """Fake the analysis pipeline and return a list that records each (fake) Gemini call."""
     calls = []
 
     def fake_generate_match(**kwargs):
@@ -94,7 +92,7 @@ def test_force_runs_a_new_analysis_and_updates_the_cache(client, db_session, mon
 
     assert forced.status_code == 201 and forced.json()["cached"] is False
     assert forced.json()["id"] != first.json()["id"]
-    assert after.json()["id"] == forced.json()["id"]  # the cache now points at the newest analysis
+    assert after.json()["id"] == forced.json()["id"]
     assert len(calls) == 2
 
 
@@ -201,11 +199,9 @@ def test_skill_gap_summary_is_cached_until_the_user_changes_something(client, db
     user, headers, resume, job = setup_pair(client, db_session)
 
     assert client.get("/recommendations", headers=headers).json()["analysis_count"] == 0
-    # Written straight to the database, so nothing invalidates the cache: the response is stale.
     create_analysis(db_session, user, resume, job)
     assert client.get("/recommendations", headers=headers).json()["analysis_count"] == 0
 
-    # Any change made through the API bumps the user's cache version.
     client.post("/jobs", headers=headers, json={"title": "SRE", "company": "Acme", "description": "Linux"})
     assert client.get("/recommendations", headers=headers).json()["analysis_count"] == 1
 
@@ -234,8 +230,8 @@ def test_job_recommendations_are_cached_but_partial_results_are_not(client, db_s
     second = client.get("/recommendations/jobs", headers=headers).json()
     third = client.get("/recommendations/jobs", headers=headers).json()
 
-    assert first["unindexed_job_ids"] == [job.id]  # partial: not cached
-    assert second["unindexed_job_ids"] == []  # complete: cached
+    assert first["unindexed_job_ids"] == [job.id]
+    assert second["unindexed_job_ids"] == []
     assert third == second
     assert len(calls) == 2
 
@@ -285,7 +281,7 @@ def test_ai_limit_counts_only_real_gemini_calls(client, db_session, monkeypatch)
     monkeypatch.setattr(settings, "RATE_LIMIT_AI_GENERATE", 1)
 
     assert match(client, headers, resume, job).status_code == 201
-    assert match(client, headers, resume, job).status_code == 200  # cache hit: free
+    assert match(client, headers, resume, job).status_code == 200
     assert match(client, headers, resume, job, force=True).status_code == 429
 
 
@@ -329,7 +325,6 @@ def test_limit_resets_in_the_next_window(client, monkeypatch, redis_client):
 
     assert client.post("/auth/login", json=body).status_code == 401
     assert client.post("/auth/login", json=body).status_code == 429
-    # The counter expires with its window, so Redis cleans up after itself.
     [key] = redis_client.keys("ratelimit:login:*")
     assert 0 < redis_client.ttl(key) <= settings.RATE_LIMIT_LOGIN_WINDOW_SECONDS
 
@@ -354,7 +349,6 @@ def test_api_keeps_working_when_redis_is_down(client, db_session, monkeypatch):
     first = match(client, headers, resume, job)
     second = match(client, headers, resume, job)
 
-    # No cache (Gemini is called twice) and no rate limit (fail open), but no errors either.
     assert (first.status_code, second.status_code) == (201, 201)
     assert len(calls) == 2
     assert client.get("/health").json() == {"status": "healthy", "redis": "unavailable", "worker": "disabled"}
@@ -367,12 +361,12 @@ def test_redis_is_skipped_for_a_while_after_a_failure(monkeypatch):
     client.set("key", "value")
 
     server.connected = False
-    assert cache.get_value("key") is None  # fails, opens the circuit
+    assert cache.get_value("key") is None
 
     server.connected = True
-    assert cache.get_value("key") is None  # still skipped: no reconnect attempt yet
+    assert cache.get_value("key") is None
 
-    monkeypatch.setattr(redis_module, "_skip_until", 0.0)  # the retry period has passed
+    monkeypatch.setattr(redis_module, "_skip_until", 0.0)
     assert cache.get_value("key") == "value"
 
 
@@ -381,7 +375,7 @@ def test_redis_can_be_disabled(client):
 
     assert client.get("/health").json() == {"status": "healthy", "redis": "disabled", "worker": "disabled"}
     assert cache.get_value("anything") is None
-    rate_limit.enforce(rate_limit.login_limit(), "1.2.3.4")  # no-op, no error
+    rate_limit.enforce(rate_limit.login_limit(), "1.2.3.4")
 
 
 @pytest.mark.parametrize("disabled", ["", None])

@@ -1,4 +1,3 @@
-"""Explainable weighted match score."""
 import pytest
 
 from app.core.config import settings
@@ -15,15 +14,15 @@ def components(breakdown):
 
 def test_category_score_weights_importance_and_partial_credit():
     items = [
-        req("skill", "met"),                       # 2 of 2
-        req("skill", "partial"),                   # 1 of 2
-        req("skill", "missing", "preferred"),      # 0 of 1
-        req("experience", "met"),                  # other category, ignored
+        req("skill", "met"),
+        req("skill", "partial"),
+        req("skill", "missing", "preferred"),
+        req("experience", "met"),
     ]
 
     score, detail = category_score(items, "skill")
 
-    assert score == pytest.approx(60.0)  # 3 / 5
+    assert score == pytest.approx(60.0)
     assert detail == "1 met, 1 partial of 3 skill requirements"
 
 
@@ -41,7 +40,6 @@ def test_semantic_score_calibration(similarity, expected):
 
 
 def test_semantic_score_custom_calibration():
-    # Job recommendations use a tighter passage-to-passage range.
     assert semantic_score(0.775, floor=0.70, ceiling=0.85)[0] == pytest.approx(50.0)
     assert semantic_score(0.74, floor=0.70, ceiling=0.85)[0] == pytest.approx(26.7)
 
@@ -59,7 +57,6 @@ def test_all_components_use_the_roadmap_weights():
 
     score, breakdown = compute_match_score(items, similarity=0.85)
 
-    # 100*0.40 + 50*0.25 + 0*0.10 + 100*0.25 = 77.5 -> 78
     assert score == 78
     parts = components(breakdown)
     assert {name: part["effective_weight"] for name, part in parts.items()} == {
@@ -69,7 +66,6 @@ def test_all_components_use_the_roadmap_weights():
 
 
 def test_missing_components_are_reweighted():
-    # Only skills (100) and semantic (0) are measurable -> weights 40:25 of 65.
     score, breakdown = compute_match_score([req("skill", "met")], similarity=0.40)
 
     parts = components(breakdown)

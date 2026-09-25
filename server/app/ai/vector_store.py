@@ -11,12 +11,10 @@ from qdrant_client.models import (
 from app.ai.qdrant_client import get_collection_name, get_qdrant_client
 
 
-# Fixed namespace so the same chunk always maps to the same point ID.
 POINT_ID_NAMESPACE = uuid.UUID("5b0f8a52-3c1e-4d7a-9f2b-6e4c1a9d8b70")
 
 
 def point_id(user_id: int, document_type: str, document_id: int, chunk_index: int) -> str:
-    """Point IDs are unique per user, document type, document and chunk, so documents never collide."""
     return str(
         uuid.uuid5(
             POINT_ID_NAMESPACE,
@@ -73,7 +71,6 @@ def upsert_chunks(
         for index, (chunk, vector) in enumerate(zip(chunks, embeddings))
     ]
 
-    # Remove the previous version first so re-indexing a shorter document leaves no stale chunks.
     delete_document_chunks(user_id, document_type, document_id)
 
     get_qdrant_client().upsert(
@@ -83,7 +80,6 @@ def upsert_chunks(
 
 
 def get_document_points(user_id: int, document_type: str, document_id: int, with_vectors: bool = True):
-    """All stored chunks of one document, in chunk order (vectors included by default)."""
     points, _ = get_qdrant_client().scroll(
         collection_name=get_collection_name(),
         scroll_filter=_document_filter(user_id, document_type, document_id),
@@ -95,7 +91,6 @@ def get_document_points(user_id: int, document_type: str, document_id: int, with
 
 
 def indexed_document_ids(user_id: int, document_type: str) -> set[int]:
-    """IDs of this user's documents of one type that have at least one chunk in the index."""
     ids: set[int] = set()
     offset = None
     while True:
@@ -125,7 +120,6 @@ def search_chunks(
     document_type: str | None = None,
     documents: list[tuple[str, int]] | None = None,
 ):
-    """Search a user's chunks, optionally restricted to a document type or to specific documents."""
     must = [_match("user_id", user_id)]
 
     if document_type is not None:

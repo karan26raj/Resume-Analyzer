@@ -1,4 +1,3 @@
-// In development requests go through the Vite proxy (/api -> http://127.0.0.1:8000).
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '')
 
 const TOKEN_KEY = 'resumeiq.token'
@@ -22,7 +21,6 @@ export function setToken(token) {
     if (token) localStorage.setItem(TOKEN_KEY, token)
     else localStorage.removeItem(TOKEN_KEY)
   } catch {
-    // Storage can be unavailable (private mode); the session then lasts for this tab only.
   }
 }
 
@@ -35,10 +33,8 @@ export class ApiError extends Error {
   }
 }
 
-// Errors look like {"detail": "text" | [{loc, msg, type}], "code": "...", "request_id": "..."}.
 function messageFromBody(body, status) {
   const message = detailMessage(body, status)
-  // Server-side failures get a short reference that matches the request ID in the server logs.
   return status >= 500 && body?.request_id ? `${message} (ref ${body.request_id.slice(0, 8)})` : message
 }
 
@@ -59,7 +55,6 @@ function detailMessage(body, status) {
 }
 
 function handleUnauthorized(status, path) {
-  // A 401 on the login endpoint just means wrong credentials, not an expired session.
   if (status === 401 && !path.startsWith('/auth/login') && unauthorizedHandler) {
     unauthorizedHandler()
   }
@@ -111,7 +106,6 @@ export async function apiRequest(path, { method = 'GET', body, query, signal, au
   return data
 }
 
-// fetch() cannot report upload progress, so file uploads use XMLHttpRequest.
 export function uploadFile(path, file, { onProgress, fieldName = 'file' } = {}) {
   let xhr
   const promise = new Promise((resolve, reject) => {

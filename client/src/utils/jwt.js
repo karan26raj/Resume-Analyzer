@@ -1,5 +1,3 @@
-// Reads the expiry from the access token issued by /auth/login. The signature is
-// verified by the server; the client only uses `exp` to end the session on time.
 export function getTokenExpiry(token) {
   if (!token) return null
   try {

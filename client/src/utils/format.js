@@ -1,5 +1,3 @@
-// The API stores naive UTC timestamps ("2026-09-24T18:27:01.644466"); mark them as UTC
-// so the browser converts them to the viewer's local time.
 export function parseApiDate(value) {
   if (!value) return null
   const hasZone = /[zZ]|[+-]\d{2}:?\d{2}$/.test(value)
