@@ -76,12 +76,23 @@ function SkillCoverage({ matched, missing }) {
   )
 }
 
-function AnalysisResult({ analysis, resumeName, job, onRerun, rerunDisabled }) {
+function AnalysisResult({ analysis, resumeName, job, fromCache, onRerun, rerunDisabled }) {
   const band = scoreBand(analysis.match_score)
   // Analyses created before evidence-based scoring have no requirements or breakdown.
   const explainable = Boolean(analysis.score_breakdown && analysis.requirements)
   return (
     <div className="analysis-result">
+      {fromCache && (
+        <p className="notice notice--info notice--row">
+          <span>
+            You already analyzed this pair {formatRelative(analysis.created_at)}, so this is that result — no new AI
+            call was made.
+          </span>
+          <button className="btn btn--secondary btn--sm" onClick={onRerun} disabled={rerunDisabled}>
+            <RotateCcw size={15} aria-hidden="true" /> Run a fresh analysis
+          </button>
+        </p>
+      )}
       <section className={`card score-hero score-hero--${band.key}`}>
         <div className="score-hero__ring">
           <ScoreRing key={analysis.id} score={analysis.match_score} size={210} />
@@ -228,6 +239,8 @@ export function AnalysisPage() {
   const [jobId, setJobId] = useState(params.get('job') || '')
   const [running, setRunning] = useState(false)
   const [runError, setRunError] = useState(null)
+  // ID of an analysis the API returned from its cache instead of running a new one.
+  const [cachedId, setCachedId] = useState(null)
   const selectedId = Number(params.get('id')) || null
 
   const resumeNames = useMemo(() => new Map((resumes.data || []).map((resume) => [resume.id, resume.filename])), [resumes.data])
@@ -247,14 +260,21 @@ export function AnalysisPage() {
     if (jobs.data && jobId && !jobs.data.some((job) => String(job.id) === jobId)) setJobId('')
   }, [jobs.data, jobId])
 
-  const analyze = async (targetResumeId, targetJobId) => {
+  const analyze = async (targetResumeId, targetJobId, options) => {
     setRunning(true)
     setRunError(null)
     try {
-      const result = await analysisApi.match(Number(targetResumeId), Number(targetJobId))
-      history.setData((current) => [result, ...(current || []).filter((item) => item.id !== result.id)])
+      const result = await analysisApi.match(Number(targetResumeId), Number(targetJobId), options)
+      if (result.cached) {
+        // An existing analysis: select it where it already sits in the history.
+        setCachedId(result.id)
+        toast.info(`Showing your recent analysis — score ${result.match_score}`)
+      } else {
+        setCachedId(null)
+        history.setData((current) => [result, ...(current || []).filter((item) => item.id !== result.id)])
+        toast.success(`Analysis complete — score ${result.match_score}`)
+      }
       setParams({ id: String(result.id) })
-      toast.success(`Analysis complete — score ${result.match_score}`)
     } catch (error) {
       setRunError(error.message)
     } finally {
@@ -270,7 +290,7 @@ export function AnalysisPage() {
   const rerun = (analysis) => {
     setResumeId(String(analysis.resume_id))
     setJobId(String(analysis.job_id))
-    analyze(analysis.resume_id, analysis.job_id)
+    analyze(analysis.resume_id, analysis.job_id, { force: true })
   }
 
   const listsLoading = resumes.loading || jobs.loading
@@ -359,6 +379,7 @@ export function AnalysisPage() {
               analysis={selected}
               resumeName={resumeNames.get(selected.resume_id) || `Resume #${selected.resume_id}`}
               job={jobsById.get(selected.job_id)}
+              fromCache={selected.id === cachedId}
               onRerun={() => rerun(selected)}
               rerunDisabled={running}
             />

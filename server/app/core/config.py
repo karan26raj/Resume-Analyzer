@@ -73,6 +73,37 @@ class Settings(BaseSettings):
     QDRANT_LOCATION: str | None = None
     QDRANT_COLLECTION_NAME: str = "resume_embeddings"
 
+    # Phase 14: Redis for caching and rate limiting. Leave empty to disable both.
+    # When Redis is configured but unreachable the API keeps working, just without cache and limits.
+    REDIS_URL: str | None = "redis://localhost:6379/0"
+    REDIS_TIMEOUT_SECONDS: float = 0.5
+    # After a connection failure Redis is skipped for this long instead of slowing every request.
+    REDIS_RETRY_AFTER_SECONDS: int = 30
+
+    CACHE_TTL_ANALYSIS_SECONDS: int = 24 * 60 * 60
+    CACHE_TTL_REWRITE_SECONDS: int = 24 * 60 * 60
+    CACHE_TTL_RECOMMENDATIONS_SECONDS: int = 10 * 60
+
+    # Fixed-window limits: at most LIMIT requests per WINDOW seconds.
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_LOGIN: int = 10  # per client IP
+    RATE_LIMIT_LOGIN_WINDOW_SECONDS: int = 5 * 60
+    RATE_LIMIT_REGISTER: int = 5  # per client IP
+    RATE_LIMIT_REGISTER_WINDOW_SECONDS: int = 60 * 60
+    RATE_LIMIT_AI_GENERATE: int = 20  # per user: analysis, rewrite, assistant (Gemini text generation)
+    RATE_LIMIT_AI_GENERATE_WINDOW_SECONDS: int = 10 * 60
+    RATE_LIMIT_AI_EMBED: int = 60  # per user: semantic search and manual indexing (Gemini embeddings)
+    RATE_LIMIT_AI_EMBED_WINDOW_SECONDS: int = 10 * 60
+
+    # Phase 15: document indexing runs on a Celery worker (`celery -A app.worker.celery_app:celery_app worker`).
+    # When disabled, or when the broker is unreachable, indexing runs in-process after the response instead.
+    TASK_QUEUE_ENABLED: bool = True
+    # A separate Redis database from the cache, so flushing the cache never drops queued work.
+    CELERY_BROKER_URL: str = "redis://localhost:6379/1"
+    # Retries for transient failures (Gemini 429/503, Qdrant hiccups), with exponential backoff.
+    INDEX_TASK_MAX_RETRIES: int = 3
+    INDEX_TASK_RETRY_BASE_SECONDS: int = 10
+
     @field_validator("DEBUG", mode="before")
     @classmethod
     def parse_debug_value(cls, value):

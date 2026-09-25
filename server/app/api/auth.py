@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -14,6 +14,7 @@ from app.utils.security import (
     verify_password
 )
 from app.utils.jwt import create_access_token
+from app.api import rate_limit
 from app.api.dependencies import get_current_user
 
 router = APIRouter(
@@ -26,8 +27,11 @@ router = APIRouter(
 )
 def register_user(
     user_data: UserRegister,
+    request: Request,
     db: Session = Depends(get_db)
 ):
+    rate_limit.enforce(rate_limit.register_limit(), rate_limit.client_ip(request))
+
     existing_user = (
         db.query(User)
         .filter(User.email == user_data.email)
@@ -61,8 +65,11 @@ def register_user(
 )
 def login_user(
     user_data: UserLogin,
+    request: Request,
     db: Session = Depends(get_db)
 ):
+    # Slows down password guessing from one address.
+    rate_limit.enforce(rate_limit.login_limit(), rate_limit.client_ip(request))
 
     user = (
         db.query(User)

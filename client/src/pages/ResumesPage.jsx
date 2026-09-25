@@ -17,6 +17,8 @@ import {
 } from 'lucide-react'
 import { embeddingsApi, resumesApi } from '../api/services'
 import { useApi } from '../hooks/useApi'
+import { usePollWhile } from '../hooks/usePollWhile'
+import { IndexStatusBadge, isIndexing } from '../components/ui/IndexStatusBadge'
 import { useToast } from '../components/ui/Toast'
 import { PageHeader } from '../components/ui/PageHeader'
 import { ConfirmDialog, Modal } from '../components/ui/Modal'
@@ -99,6 +101,9 @@ export function ResumesPage() {
   const aborters = useRef(new Map())
   const nextId = useRef(1)
 
+  // New uploads are indexed by the background worker; refresh until none is still in progress.
+  usePollWhile((resumes.data || []).some(isIndexing), resumes.reload)
+
   const updateUpload = (id, patch) =>
     setUploads((current) => current.map((item) => (item.id === id ? { ...item, ...patch } : item)))
 
@@ -160,6 +165,7 @@ export function ResumesPage() {
       toast.error(`Indexing failed: ${error.message}`)
     } finally {
       setIndexing(null)
+      resumes.reload()
     }
   }
 
@@ -348,6 +354,7 @@ export function ResumesPage() {
                 <p className="doc-card__meta">
                   Uploaded {formatDate(resume.created_at)} · {formatRelative(resume.created_at)}
                 </p>
+                <IndexStatusBadge document={resume} />
               </article>
             ))}
           </div>
@@ -360,6 +367,7 @@ export function ResumesPage() {
                     <th>Filename</th>
                     <th>Type</th>
                     <th>Uploaded</th>
+                    <th>Search index</th>
                     <th className="actions-col">Actions</th>
                   </tr>
                 </thead>
@@ -375,6 +383,9 @@ export function ResumesPage() {
                         </span>
                       </td>
                       <td>{formatDate(resume.created_at)}</td>
+                      <td>
+                        <IndexStatusBadge document={resume} />
+                      </td>
                       <td className="actions-col">{actions(resume)}</td>
                     </tr>
                   ))}

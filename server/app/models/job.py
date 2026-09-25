@@ -4,10 +4,11 @@ from sqlalchemy import DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
+from app.models.index_status import IndexStatusMixin
 from app.utils.time import utc_now
 
 
-class Job(Base):
+class Job(IndexStatusMixin, Base):
     __tablename__ = "jobs"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)

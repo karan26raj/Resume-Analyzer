@@ -4,6 +4,8 @@ from pydantic import BaseModel, ConfigDict, Field
 class RewriteRequest(BaseModel):
     resume_id: int = Field(gt=0)
     job_id: int = Field(gt=0)
+    # Skip the cache and always generate new suggestions (phase 14).
+    force: bool = False
 
 
 class RewriteSuggestionOutput(BaseModel):
@@ -44,3 +46,5 @@ class RewriteResponse(BaseModel):
     suggestions: list[RewriteSuggestion]
     # Suggestions dropped by the "never invent" guard, with the reason, for transparency.
     rejected: list[RejectedSuggestion]
+    # True when these suggestions came from the cache instead of a new Gemini call.
+    cached: bool = False

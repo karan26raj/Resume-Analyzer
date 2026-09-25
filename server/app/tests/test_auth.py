@@ -3,7 +3,9 @@ def test_health_check(client):
 
     assert response.status_code == 200
     assert response.json() == {
-        "status": "healthy"
+        "status": "healthy",
+        "redis": "connected",
+        "worker": "disabled",
     }
 
 def test_register_user(client):

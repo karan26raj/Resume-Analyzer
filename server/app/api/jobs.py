@@ -2,16 +2,12 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
-from app.core.config import settings
 from app.core.database import get_db
 from app.models.job import Job
 from app.models.user import User
 from app.schemas.job import JobCreate, JobResponse
-from app.services.indexing import (
-    index_document_in_background,
-    job_to_text,
-    remove_document_from_index,
-)
+from app.services import cache
+from app.services.indexing import remove_document_from_index, schedule_indexing
 
 
 router = APIRouter(
@@ -31,15 +27,8 @@ def create_job(
     db.add(job)
     db.commit()
     db.refresh(job)
-
-    if settings.AUTO_INDEX_DOCUMENTS:
-        background_tasks.add_task(
-            index_document_in_background,
-            user_id=current_user.id,
-            document_type="job",
-            document_id=job.id,
-            text=job_to_text(job),
-        )
+    cache.invalidate_user_recommendations(current_user.id)
+    schedule_indexing(db, job, background_tasks)
 
     return job
 
@@ -86,6 +75,7 @@ def delete_job(
     # Analysis results for this job are removed by the ON DELETE CASCADE foreign key.
     db.delete(job)
     db.commit()
+    cache.invalidate_job(current_user.id, job_id)
 
     remove_document_from_index(
         user_id=current_user.id,

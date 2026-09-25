@@ -90,6 +90,8 @@ The project is designed to demonstrate modern Backend Engineering, Generative AI
 * Pydantic
 * JWT Authentication
 * Qdrant Vector Database
+* Redis (caching, rate limiting and the task queue broker)
+* Celery (background worker)
 * PyMuPDF
 * Docker
 
@@ -145,13 +147,16 @@ Validate File
 Extract Text
       │
       ▼
-Store Resume
+Store Resume  ──►  201 response (index_status: "queued")
       │
       ▼
-Generate Embeddings
+Celery task on Redis
       │
       ▼
-Store Vectors in Qdrant
+Worker: chunk → embed (Gemini) → store vectors in Qdrant
+      │
+      ▼
+index_status: "indexed" (or "failed", with the reason)
       │
       ▼
 Enable Semantic Search
@@ -176,6 +181,7 @@ RAG Question Answering
 
 * PostgreSQL
 * Qdrant Vector Database
+* Redis
 
 ## AI & GenAI
 
@@ -282,6 +288,22 @@ alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
+## Start the Background Worker
+
+In a second terminal (Redis must be running):
+
+```powershell
+celery -A app.worker.celery_app:celery_app worker --pool=threads --concurrency=4 --loglevel=info
+```
+
+`--pool=threads` is required on Windows. Without a worker the API still works: new documents stay `queued` until a worker starts (the queue lives in Redis, so nothing is lost), and match analysis indexes a resume on the fly when it needs it. Set `TASK_QUEUE_ENABLED=False` to index in the API process instead.
+
+Documents created before phase 15 start as `pending`. To reconcile them with Qdrant (and queue any that are missing):
+
+```powershell
+python -m app.scripts.sync_index_status --queue
+```
+
 ---
 
 # API Documentation
@@ -321,7 +343,7 @@ http://127.0.0.1:8000/redoc
 
 | DELETE | /resumes/{resume_id}      |
 
-Uploading a resume automatically indexes it for semantic search in the background (`AUTO_INDEX_DOCUMENTS`). Deleting a resume also removes its stored file, analyses and vectors.
+Uploading a resume queues it for indexing on the background worker (`AUTO_INDEX_DOCUMENTS`). Resume and job responses include `index_status` (`pending`, `queued`, `processing`, `indexed`, `failed`), `index_error`, `indexed_at` and `chunk_count`. Deleting a resume also removes its stored file, analyses and vectors.
 
 ## Job APIs
 
@@ -332,7 +354,7 @@ Uploading a resume automatically indexes it for semantic search in the backgroun
 | GET    | /jobs/{job_id} |
 | DELETE | /jobs/{job_id} |
 
-Creating a job indexes it automatically; deleting a job removes its analyses and vectors.
+Creating a job queues it for indexing the same way; deleting a job removes its analyses and vectors.
 
 ## Analysis APIs
 
@@ -374,9 +396,48 @@ Rewrites are validated in code: the original line must exist in the resume, and 
 
 ---
 
+# Caching and Rate Limiting (Redis)
+
+PostgreSQL is always the source of truth; Redis only saves repeated work.
+
+| What | Key | TTL | Invalidated when |
+| ---- | --- | --- | ---------------- |
+| Match analysis | `analysis:{user}:r{resume}:j{job}` → analysis ID | 24 h | the resume or job is deleted |
+| Resume rewrite | `rewrite:{user}:r{resume}:j{job}` → full response | 24 h | the resume or job is deleted |
+| `GET /recommendations`, `GET /recommendations/jobs` | `recs:{user}:v{version}:…` | 10 min | anything the user changes (upload, new job, delete, new analysis) bumps `{version}` |
+
+* Repeating `POST /analysis/match` or `POST /resumes/rewrite` for the same pair returns the earlier result with `"cached": true` (analysis: status 200 instead of 201) and makes no Gemini call. Send `"force": true` to run a new one.
+* Resumes and jobs can't be edited, so a pair's cached result stays valid until one of them is deleted. A cached analysis ID is re-checked in PostgreSQL before it is returned.
+* Rate limits (fixed window, `429 Too Many Requests` with a `Retry-After` header):
+
+| Bucket | Applies to | Default |
+| ------ | ---------- | ------- |
+| `login` | `POST /auth/login`, per client IP | 10 per 5 min |
+| `register` | `POST /auth/register`, per client IP | 5 per hour |
+| `ai-generate` | analysis, rewrite and assistant (Gemini text generation), per user | 20 per 10 min |
+| `ai-embed` | `POST /embeddings/search` and `/embeddings/index`, per user | 60 per 10 min |
+
+  Cache hits don't count towards `ai-generate`.
+* **Redis is optional.** If it is down, the API keeps working without cache or limits, skips Redis for 30 seconds after a failure, and `GET /health` reports `"redis": "unavailable"`. Set `REDIS_URL=` (empty) to disable it.
+
+---
+
+# Background Processing (Celery)
+
+Embedding a document calls the Gemini API and can take seconds, so it runs on a Celery worker instead of inside the upload request.
+
+* **Durable:** tasks wait in Redis (database 1, separate from the cache), so they survive API restarts and run as soon as a worker is available.
+* **Retries:** transient failures (Gemini 429/503, Qdrant hiccups) are retried 3 times with exponential backoff (10 s, 20 s, 40 s); the document shows `queued` with the last error meanwhile. An empty document fails immediately.
+* **At-least-once:** tasks are acknowledged only after they finish, so a crashed worker's task is redelivered. Indexing is idempotent (it replaces the document's vectors), so running it twice is harmless.
+* **Deletes are safe:** a document deleted while it is being embedded has its new vectors removed.
+* **Fallback:** if the broker is unreachable when a document is created, the API indexes it in-process after the response and skips the queue for 30 seconds.
+* `GET /health` reports the worker: `online`, `offline` (no worker running), `unavailable` (broker down) or `disabled`.
+
+---
+
 # Local Infrastructure
 
-`docker-compose.yml` starts PostgreSQL and Qdrant:
+`docker-compose.yml` starts PostgreSQL, Qdrant and Redis (cache in database 0, Celery broker in database 1):
 
 ```bash
 docker compose up -d
@@ -386,7 +447,7 @@ docker compose up -d
 
 # Running Tests
 
-Tests use the `TEST_DATABASE_URL` database and an in-memory Qdrant. Gemini is never called.
+Tests use the `TEST_DATABASE_URL` database, an in-memory Qdrant and an in-memory Redis (fakeredis). Celery tasks run eagerly (in-process). Gemini is never called.
 
 ```powershell
 pytest
@@ -403,6 +464,19 @@ EMBEDDING_DIMENSIONS=3072
 GEMINI_TIMEOUT_SECONDS=60
 GEMINI_MAX_RETRIES=2
 GEMINI_FALLBACK_MODELS=["gemini-3.6-flash","gemini-3.8-flash","gemini-3.5-flash-lite","gemini-flash-lite-latest"]
+
+REDIS_URL=redis://localhost:6379/0
+CACHE_TTL_ANALYSIS_SECONDS=86400
+CACHE_TTL_REWRITE_SECONDS=86400
+CACHE_TTL_RECOMMENDATIONS_SECONDS=600
+RATE_LIMIT_ENABLED=True
+RATE_LIMIT_LOGIN=10
+RATE_LIMIT_AI_GENERATE=20
+
+TASK_QUEUE_ENABLED=True
+CELERY_BROKER_URL=redis://localhost:6379/1
+INDEX_TASK_MAX_RETRIES=3
+INDEX_TASK_RETRY_BASE_SECONDS=10
 ```
 
 If `GEMINI_MODEL` is overloaded (503), rate limited (429) or retired (404), match analysis and the assistant automatically try each fallback model in order. Each stored analysis records the model that actually produced it.

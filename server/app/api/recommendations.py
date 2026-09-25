@@ -4,12 +4,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
+from app.core.config import settings
 from app.core.database import get_db
 from app.models.analysis_result import AnalysisResult
 from app.models.job import Job
 from app.models.resume import Resume
 from app.models.user import User
 from app.schemas.recommendation import JobRecommendationsResponse, RecommendationsResponse
+from app.services import cache
 from app.services.job_recommendations import EmptyResumeError, JobRecommendationError, recommend_jobs
 
 
@@ -29,6 +31,11 @@ def get_recommendations(
     db: Session = Depends(get_db),
 ):
     """Aggregate the user's analyses into their most frequent skill gaps and latest recommendations."""
+    cache_key = cache.recommendations_key(current_user.id, "skills", limit)
+    cached = cache.get_json(cache_key)
+    if cached is not None:
+        return cached
+
     analyses = (
         db.query(AnalysisResult)
         .filter(AnalysisResult.user_id == current_user.id)
@@ -66,7 +73,7 @@ def get_recommendations(
         else None
     )
 
-    return {
+    response = {
         "analysis_count": len(analyses),
         "average_match_score": average_match_score,
         "top_missing_skills": [
@@ -75,6 +82,8 @@ def get_recommendations(
         ],
         "recommendations": recommendations[:MAX_RECOMMENDATIONS],
     }
+    cache.set_json(cache_key, response, settings.CACHE_TTL_RECOMMENDATIONS_SECONDS)
+    return response
 
 
 @router.get("/jobs", response_model=JobRecommendationsResponse)
@@ -85,6 +94,11 @@ def get_job_recommendations(
     db: Session = Depends(get_db),
 ):
     """Rank your saved jobs by semantic similarity to a resume (phase 11)."""
+    cache_key = cache.recommendations_key(current_user.id, "jobs", resume_id or "latest", limit)
+    cached = cache.get_json(cache_key)
+    if cached is not None:
+        return cached
+
     resume_query = db.query(Resume).filter(Resume.user_id == current_user.id)
     if resume_id is not None:
         resume = resume_query.filter(Resume.id == resume_id).first()
@@ -122,8 +136,12 @@ def get_job_recommendations(
             detail=f"Vector search failed: {error}",
         )
 
-    return {
+    response = {
         "resume_id": resume.id,
         "recommendations": recommendations,
         "unindexed_job_ids": unindexed,
     }
+    # A partial ranking (some jobs couldn't be indexed) is not cached, so a retry can complete it.
+    if not unindexed:
+        cache.set_json(cache_key, response, settings.CACHE_TTL_RECOMMENDATIONS_SECONDS)
+    return response

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { Building2, Eye, Plus, RefreshCw, Search, Sparkles, Trash2 } from 'lucide-react'
 import { embeddingsApi, jobsApi } from '../api/services'
 import { useApi } from '../hooks/useApi'
+import { usePollWhile } from '../hooks/usePollWhile'
+import { IndexStatusBadge, isIndexing } from '../components/ui/IndexStatusBadge'
 import { useToast } from '../components/ui/Toast'
 import { PageHeader } from '../components/ui/PageHeader'
 import { TextArea, TextField } from '../components/ui/Field'
@@ -38,6 +40,9 @@ export function JobsPage() {
   const [toDelete, setToDelete] = useState(null)
   const [deleting, setDeleting] = useState(false)
   const [indexing, setIndexing] = useState(null)
+
+  // New jobs are indexed by the background worker; refresh until none is still in progress.
+  usePollWhile((jobs.data || []).some(isIndexing), jobs.reload)
 
   const errors = validate(form)
   const update = (field) => (event) => setForm((current) => ({ ...current, [field]: event.target.value }))
@@ -75,6 +80,7 @@ export function JobsPage() {
       toast.error(`Indexing failed: ${error.message}`)
     } finally {
       setIndexing(null)
+      jobs.reload()
     }
   }
 
@@ -203,6 +209,7 @@ export function JobsPage() {
                   </div>
                   <h3 className="job-card__title">{job.title}</h3>
                   <p className="job-card__excerpt">{job.description}</p>
+                  <IndexStatusBadge document={job} />
                   <div className="job-card__footer">
                     <span className="text-muted" title={formatDate(job.created_at)}>
                       Saved {formatRelative(job.created_at)}

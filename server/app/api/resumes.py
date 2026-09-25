@@ -14,7 +14,8 @@ from app.core.database import get_db
 from app.models.resume import Resume
 from app.models.user import User
 from app.schemas.resume import ResumeDetailResponse, ResumeResponse, ResumeUploadResponse
-from app.services.indexing import index_document_in_background, remove_document_from_index
+from app.services import cache
+from app.services.indexing import remove_document_from_index, schedule_indexing
 from app.utils.pdf_parser import extract_text_from_docx, extract_text_from_pdf
 
 logger = logging.getLogger(__name__)
@@ -70,19 +71,7 @@ def get_resumes(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    resumes = (
-        db.query(Resume).filter(Resume.user_id == current_user.id).all()
-    )
-
-    return [
-        {
-            "id": resume.id,
-            "filename": resume.filename,
-            "file_type": resume.file_type,
-            "created_at": resume.created_at
-        }
-        for resume in resumes
-    ]
+    return db.query(Resume).filter(Resume.user_id == current_user.id).all()
 
 @router.get("/{resume_id}", response_model=ResumeDetailResponse)
 def get_resume(
@@ -105,6 +94,7 @@ def delete_resume(
     # Analysis results for this resume are removed by the ON DELETE CASCADE foreign key.
     db.delete(resume)
     db.commit()
+    cache.invalidate_resume(current_user.id, resume_id)
 
     # Only ever remove files that live inside the upload directory.
     upload_dir = Path(settings.UPLOAD_DIR).resolve()
@@ -204,20 +194,18 @@ def upload_resume(
         if final_path and final_path.exists() and not database_record_created:
             final_path.unlink()
 
-    if settings.AUTO_INDEX_DOCUMENTS and raw_text:
-        background_tasks.add_task(
-            index_document_in_background,
-            user_id=current_user.id,
-            document_type="resume",
-            document_id=resume.id,
-            text=raw_text,
-        )
+    # "Latest resume" recommendations now refer to this upload.
+    cache.invalidate_user_recommendations(current_user.id)
+
+    if raw_text:
+        schedule_indexing(db, resume, background_tasks)
 
     return {
         "message": "Resume uploaded successfully",
         "resume_id": resume.id,
         "filename": resume.filename,
         "text_length": len(raw_text),
+        "index_status": resume.index_status,
     }
 
 @router.get("/{resume_id}/text")

@@ -3,7 +3,16 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
-class ResumeResponse(BaseModel):
+class IndexStatusFields(BaseModel):
+    """Where the document is in the embedding pipeline (phase 15)."""
+
+    index_status: str
+    index_error: str | None = None
+    indexed_at: datetime | None = None
+    chunk_count: int | None = None
+
+
+class ResumeResponse(IndexStatusFields):
     id: int
     filename: str
     file_type: str
@@ -21,3 +30,4 @@ class ResumeUploadResponse(BaseModel):
     resume_id: int
     filename: str
     text_length: int
+    index_status: str

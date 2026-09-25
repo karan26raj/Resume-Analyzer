@@ -22,8 +22,9 @@ export const resumesApi = {
   remove: (id) => apiRequest(`/resumes/${id}`, { method: 'DELETE' }),
   upload: (file, onProgress) => uploadFile('/resumes/upload', file, { onProgress }),
   // Truthful, job-tailored rewrites of existing resume lines (not stored by the API).
-  rewrite: (resumeId, jobId) =>
-    apiRequest('/resumes/rewrite', { method: 'POST', body: { resume_id: resumeId, job_id: jobId } }),
+  // Cached by the API for 24 hours (cached: true) unless force is set.
+  rewrite: (resumeId, jobId, { force = false } = {}) =>
+    apiRequest('/resumes/rewrite', { method: 'POST', body: { resume_id: resumeId, job_id: jobId, force } }),
 }
 
 export const jobsApi = {
@@ -36,8 +37,9 @@ export const jobsApi = {
 export const analysisApi = {
   list: (filters, options) => apiRequest('/analysis', { ...options, query: filters }),
   get: (id, options) => apiRequest(`/analysis/${id}`, options),
-  match: (resumeId, jobId) =>
-    apiRequest('/analysis/match', { method: 'POST', body: { resume_id: resumeId, job_id: jobId } }),
+  // The API returns a recent stored analysis of the same pair (cached: true) unless force is set.
+  match: (resumeId, jobId, { force = false } = {}) =>
+    apiRequest('/analysis/match', { method: 'POST', body: { resume_id: resumeId, job_id: jobId, force } }),
 }
 
 export const recommendationsApi = {

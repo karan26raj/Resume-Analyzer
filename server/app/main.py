@@ -13,6 +13,8 @@ from app.api.recommendations import router as recommendations_router
 from app.api.resumes import router as resumes_router
 from app.api.rewrite import router as rewrite_router
 from app.core.config import settings
+from app.core.redis import redis_status
+from app.worker.health import worker_status
 
 
 @asynccontextmanager
@@ -56,6 +58,11 @@ def root():
 
 @app.get("/health")
 def health_check():
+    # Redis and the worker are optional: without them the API stays healthy, just without cache,
+    # rate limits or a background queue (documents are then indexed in-process).
+    redis_state = redis_status()
     return {
-        "status": "healthy"
+        "status": "healthy",
+        "redis": redis_state,
+        "worker": worker_status(redis_state),
     }

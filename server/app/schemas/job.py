@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.schemas.resume import IndexStatusFields
+
 
 class JobCreate(BaseModel):
     title: str = Field(min_length=1, max_length=255)
@@ -9,7 +11,7 @@ class JobCreate(BaseModel):
     description: str = Field(min_length=1, max_length=10_000)
 
 
-class JobResponse(BaseModel):
+class JobResponse(IndexStatusFields):
     id: int
     title: str
     company: str

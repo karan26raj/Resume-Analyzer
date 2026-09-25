@@ -4,10 +4,11 @@ from sqlalchemy import String, DateTime, ForeignKey,Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
+from app.models.index_status import IndexStatusMixin
 from app.utils.time import utc_now
 
 
-class Resume(Base):
+class Resume(IndexStatusMixin, Base):
     __tablename__ = "resumes"
 
     id: Mapped[int] = mapped_column(

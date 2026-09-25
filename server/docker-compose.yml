@@ -1,4 +1,4 @@
-# Local infrastructure for development: PostgreSQL and Qdrant.
+# Local infrastructure for development: PostgreSQL, Qdrant and Redis.
 # Start with `docker compose up -d`, then run `alembic upgrade head` and `uvicorn app.main:app --reload`.
 services:
   postgres:
@@ -18,6 +18,14 @@ services:
       - "6333:6333"
     volumes:
       - qdrant_data:/qdrant/storage
+
+  # Cache and rate-limit counters only, so nothing needs to survive a restart. volatile-lru evicts
+  # only keys with a TTL, never the per-user cache version counters.
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "volatile-lru"]
+    ports:
+      - "6379:6379"
 
 volumes:
   postgres_data:

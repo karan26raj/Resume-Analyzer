@@ -6,7 +6,7 @@ from fastapi import (
 )
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user
+from app.api.rate_limit import ai_generate_limit, limit_per_user
 from app.core.database import get_db
 
 from app.models.job import Job
@@ -36,9 +36,7 @@ router = APIRouter(
 )
 def assistant_question(
     request: AssistantQuestionRequest,
-    current_user: User = Depends(
-        get_current_user
-    ),
+    current_user: User = Depends(limit_per_user(ai_generate_limit)),
     db: Session = Depends(get_db),
 ):
     documents: list[tuple[str, int]] = []

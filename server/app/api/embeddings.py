@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user
+from app.api.rate_limit import ai_embed_limit, limit_per_user
 from app.core.config import settings
 from app.core.database import get_db
 
@@ -25,6 +25,7 @@ from app.services.indexing import (
     EmptyDocumentError,
     index_document,
     job_to_text,
+    mark_indexed,
 )
 
 from app.ai.vector_store import search_chunks
@@ -42,7 +43,7 @@ router = APIRouter(
 )
 def index_document_endpoint(
     request: EmbeddingIndexRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(limit_per_user(ai_embed_limit)),
     db: Session = Depends(get_db)
 ):
 
@@ -112,6 +113,9 @@ def index_document_endpoint(
             detail=f"Failed to store vectors in Qdrant: {str(error)}"
         )
 
+    mark_indexed(document, chunk_count)
+    db.commit()
+
     return {
         "document_type": document_type,
         "document_id": document.id,
@@ -127,7 +131,7 @@ def index_document_endpoint(
 )
 def search_embeddings(
     request: EmbeddingSearchRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(limit_per_user(ai_embed_limit)),
 ):
 
     try:

@@ -3,8 +3,6 @@ from pathlib import Path
 import pymupdf
 
 from app.ai.vector_store import search_chunks, upsert_chunks
-from app.api import jobs as jobs_api
-from app.api import resumes as resumes_api
 from app.core.config import settings
 from app.models.analysis_result import AnalysisResult
 from app.models.resume import Resume
@@ -117,55 +115,8 @@ def test_get_resume_does_not_expose_file_path(client, db_session):
     assert "updated_at" in data
 
 
-def test_upload_schedules_indexing_when_enabled(client, db_session, tmp_path, monkeypatch):
-    monkeypatch.setattr(settings, "UPLOAD_DIR", str(tmp_path))
-    monkeypatch.setattr(settings, "AUTO_INDEX_DOCUMENTS", True)
-    calls = []
-    monkeypatch.setattr(resumes_api, "index_document_in_background", lambda **kwargs: calls.append(kwargs))
-    user, headers = create_user_and_headers(client, db_session)
-
-    response = client.post(
-        "/resumes/upload",
-        headers=headers,
-        files={"file": ("resume.pdf", _pdf_bytes("Python developer"), "application/pdf")},
-    )
-
-    assert response.status_code == 201
-    assert calls == [
-        {
-            "user_id": user.id,
-            "document_type": "resume",
-            "document_id": response.json()["resume_id"],
-            "text": "Python developer",
-        }
-    ]
-
-
-def test_create_job_schedules_indexing_when_enabled(client, db_session, monkeypatch):
-    monkeypatch.setattr(settings, "AUTO_INDEX_DOCUMENTS", True)
-    calls = []
-    monkeypatch.setattr(jobs_api, "index_document_in_background", lambda **kwargs: calls.append(kwargs))
-    user, headers = create_user_and_headers(client, db_session)
-
-    response = client.post(
-        "/jobs",
-        headers=headers,
-        json={"title": "Dev", "company": "Acme", "description": "Python"},
-    )
-
-    assert response.status_code == 201
-    assert calls == [
-        {
-            "user_id": user.id,
-            "document_type": "job",
-            "document_id": response.json()["id"],
-            "text": "Dev\nAcme\nPython",
-        }
-    ]
-
-
-def test_background_indexing_failure_does_not_fail_the_request(client, db_session, monkeypatch):
-    # Real background task with no Gemini key configured: indexing fails, the request still succeeds.
+def test_background_indexing_failure_does_not_fail_the_request(client, db_session, monkeypatch, worker_sessions):
+    # Real in-process indexing with no Gemini key configured: indexing fails, the request still succeeds.
     monkeypatch.setattr(settings, "AUTO_INDEX_DOCUMENTS", True)
     _, headers = create_user_and_headers(client, db_session)
 
@@ -176,3 +127,6 @@ def test_background_indexing_failure_does_not_fail_the_request(client, db_sessio
     )
 
     assert response.status_code == 201
+    job = client.get(f"/jobs/{response.json()['id']}", headers=headers).json()
+    assert job["index_status"] == "failed"
+    assert job["index_error"]

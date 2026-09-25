@@ -1,13 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
+from app.api import rate_limit
 from app.api.dependencies import get_current_user
+from app.core.config import settings
 from app.core.database import get_db
 from app.models.analysis_result import AnalysisResult
 from app.models.job import Job
 from app.models.resume import Resume
 from app.models.user import User
 from app.schemas.analysis import MatchRequest, MatchResponse
+from app.services import cache
 from app.services.analysis import run_match_analysis
 from app.services.matching import AnalysisServiceError
 
@@ -54,6 +57,7 @@ def get_analysis(
 @router.post("/match", response_model=MatchResponse, status_code=status.HTTP_201_CREATED)
 def match_resume_to_job(
     match_request: MatchRequest,
+    response: Response,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -78,6 +82,24 @@ def match_resume_to_job(
     if job is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
+    # Resumes and jobs are immutable, so a recent analysis of the same pair is still valid.
+    cache_key = cache.analysis_key(current_user.id, resume.id, job.id)
+    if not match_request.force:
+        cached_id = cache.get_value(cache_key)
+        cached = (
+            db.query(AnalysisResult)
+            .filter(AnalysisResult.id == int(cached_id), AnalysisResult.user_id == current_user.id)
+            .first()
+            if cached_id and cached_id.isdigit()
+            else None
+        )
+        if cached is not None:
+            response.status_code = status.HTTP_200_OK
+            return MatchResponse.model_validate(cached).model_copy(update={"cached": True})
+
+    # Only requests that actually reach Gemini count towards the limit.
+    rate_limit.enforce(rate_limit.ai_generate_limit(), f"user:{current_user.id}")
+
     try:
         result = run_match_analysis(user_id=current_user.id, resume=resume, job=job)
     except AnalysisServiceError as error:
@@ -92,4 +114,7 @@ def match_resume_to_job(
     db.add(analysis_result)
     db.commit()
     db.refresh(analysis_result)
+
+    cache.set_value(cache_key, str(analysis_result.id), settings.CACHE_TTL_ANALYSIS_SECONDS)
+    cache.invalidate_user_recommendations(current_user.id)
     return analysis_result

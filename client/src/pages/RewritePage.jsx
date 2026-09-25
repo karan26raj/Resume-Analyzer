@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { ArrowDown, Check, ChevronDown, Copy, Cpu, PenLine, ShieldAlert, ShieldCheck } from 'lucide-react'
+import { ArrowDown, Check, ChevronDown, Copy, Cpu, PenLine, RotateCcw, ShieldAlert, ShieldCheck } from 'lucide-react'
 import { jobsApi, resumesApi } from '../api/services'
 import { useApi } from '../hooks/useApi'
 import { useToast } from '../components/ui/Toast'
@@ -124,18 +124,21 @@ export function RewritePage() {
     if (jobs.data && jobId && !jobs.data.some((job) => String(job.id) === jobId)) setJobId('')
   }, [jobs.data, jobId])
 
-  const generate = async (event) => {
-    event.preventDefault()
-    if (!resumeId || !jobId) return
+  const request = async (targetResumeId, targetJobId, options) => {
     setRunning(true)
     setError(null)
     try {
-      setResult(await resumesApi.rewrite(Number(resumeId), Number(jobId)))
+      setResult(await resumesApi.rewrite(Number(targetResumeId), Number(targetJobId), options))
     } catch (err) {
       setError(err.message)
     } finally {
       setRunning(false)
     }
+  }
+
+  const generate = (event) => {
+    event.preventDefault()
+    if (resumeId && jobId) request(resumeId, jobId)
   }
 
   const listsLoading = resumes.loading || jobs.loading
@@ -231,7 +234,21 @@ export function RewritePage() {
               </span>
             </p>
           </div>
-          <p className="notice notice--info">Suggestions are not saved. Copy the ones you want before leaving this page.</p>
+          {result.cached ? (
+            <p className="notice notice--info notice--row">
+              <span>These are the suggestions you generated earlier for this pair — no new AI call was made.</span>
+              <button
+                className="btn btn--secondary btn--sm"
+                onClick={() => request(result.resume_id, result.job_id, { force: true })}
+              >
+                <RotateCcw size={15} aria-hidden="true" /> Generate new suggestions
+              </button>
+            </p>
+          ) : (
+            <p className="notice notice--info">
+              Suggestions are kept for 24 hours, so you can come back to them. Copy the ones you want into your resume.
+            </p>
+          )}
 
           {result.suggestions.length ? (
             result.suggestions.map((suggestion, index) => (

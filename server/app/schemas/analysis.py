@@ -12,6 +12,8 @@ RequirementStatus = Literal["met", "partial", "missing"]
 class MatchRequest(BaseModel):
     resume_id: int = Field(gt=0)
     job_id: int = Field(gt=0)
+    # Skip the cache and always run a new analysis (phase 14).
+    force: bool = False
 
 
 class RequirementAssessment(BaseModel):
@@ -94,3 +96,6 @@ class MatchResponse(MatchOutput):
     score_breakdown: ScoreBreakdown | None = None
     semantic_similarity: float | None = None
     retrieved_evidence: list[RetrievedPassage] | None = None
+
+    # True when POST /analysis/match returned a recent stored analysis instead of calling Gemini.
+    cached: bool = False

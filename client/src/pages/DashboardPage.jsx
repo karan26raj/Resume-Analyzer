@@ -14,6 +14,8 @@ import {
 import { analysisApi, jobsApi, recommendationsApi, resumesApi } from '../api/services'
 import { useAuth } from '../auth/AuthContext'
 import { useApi } from '../hooks/useApi'
+import { usePollWhile } from '../hooks/usePollWhile'
+import { isIndexing } from '../components/ui/IndexStatusBadge'
 import { PageHeader } from '../components/ui/PageHeader'
 import { EmptyState, ErrorState, Skeleton } from '../components/ui/States'
 import { ChartIllustration, SearchIllustration } from '../components/ui/Illustrations'
@@ -69,6 +71,21 @@ export function DashboardPage() {
   )
 
   const answered = user ? countAnsweredQuestions(user.id) : 0
+
+  const indexStats = useMemo(() => {
+    const documents = [...(resumes.data || []), ...(jobs.data || [])]
+    const count = (predicate) => documents.filter(predicate).length
+    return {
+      total: documents.length,
+      indexed: count((document) => document.index_status === 'indexed'),
+      failed: count((document) => document.index_status === 'failed'),
+      inProgress: count(isIndexing),
+    }
+  }, [resumes.data, jobs.data])
+  usePollWhile(indexStats.inProgress > 0, () => {
+    resumes.reload()
+    jobs.reload()
+  })
 
   const resumeNames = useMemo(
     () => new Map((resumes.data || []).map((resume) => [resume.id, resume.filename])),
@@ -186,8 +203,15 @@ export function DashboardPage() {
           icon={Database}
           accent="blue"
           label="Indexed documents"
-          value="—"
-          note="Not reported by the API yet"
+          loading={resumes.loading || jobs.loading}
+          error={resumes.error || jobs.error}
+          value={formatNumber(indexStats.indexed)}
+          note={
+            indexStats.inProgress
+              ? `${indexStats.inProgress} being indexed`
+              : `of ${indexStats.total} searchable${indexStats.failed ? ` · ${indexStats.failed} failed` : ''}`
+          }
+          to="/search"
         />
         <StatCard
           icon={Bot}

@@ -1156,3 +1156,26 @@
     opacity: 1;
   }
 }
+
+/* ---------- Search index status (phase 15) ---------- */
+.status-pill--neutral {
+  background: var(--surface-3);
+  color: var(--text-secondary);
+}
+
+.status-pill--accent {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.index-status {
+  justify-self: start;
+  align-self: flex-start;
+  font-size: 12px;
+  padding: 3px 9px;
+}
+
+.index-status__chunks {
+  font-weight: 500;
+  opacity: 0.8;
+}
