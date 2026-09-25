@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: resume-analyzer-api
+    runtime: docker
+    plan: free
+    rootDir: server
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: sh -c "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port $PORT --no-access-log"
+    healthCheckPath: /health/live
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: LOG_JSON
+        value: "true"
+      - key: TASK_QUEUE_ENABLED
+        value: "false"
+      - key: STORE_UPLOADED_FILES
+        value: "false"
+      - key: TRUSTED_PROXY_COUNT
+        value: "1"
+      - key: REDIS_TIMEOUT_SECONDS
+        value: "2"
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false

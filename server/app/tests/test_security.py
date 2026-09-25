@@ -11,7 +11,7 @@ from app.tests.helpers import create_user_and_headers
 from app.utils.jwt import create_access_token
 
 
-PUBLIC_ROUTES = {("GET", "/"), ("GET", "/health"), ("POST", "/auth/register"), ("POST", "/auth/login")}
+PUBLIC_ROUTES = {("GET", "/"), ("GET", "/health"), ("GET", "/health/live"), ("POST", "/auth/register"), ("POST", "/auth/login")}
 
 
 def token(payload: dict, key: str | None = None, algorithm: str | None = None) -> dict[str, str]:

@@ -304,6 +304,7 @@ def test_sync_can_queue_unindexed_documents(db_session, monkeypatch):
     resume = create_resume(db_session, user)
     job = create_job(db_session, user)
     published = []
+    monkeypatch.setattr(settings, "TASK_QUEUE_ENABLED", True)
     monkeypatch.setattr(index_document_task, "apply_async", lambda args: published.append(args))
 
     counts = sync(db_session, queue=True)
@@ -311,3 +312,20 @@ def test_sync_can_queue_unindexed_documents(db_session, monkeypatch):
     assert counts["queued"] == 2
     assert sorted(published) == sorted([("resume", resume.id), ("job", job.id)])
     assert reload(db_session, resume).index_status == IndexStatus.QUEUED
+
+
+def test_sync_indexes_right_away_without_a_task_queue(db_session, worker_sessions, fake_embeddings, monkeypatch):
+    from app.scripts.sync_index_status import sync
+
+    monkeypatch.setattr(settings, "TASK_QUEUE_ENABLED", False)
+    monkeypatch.setattr(index_document_task, "apply_async", lambda *a, **k: pytest.fail("no worker to publish to"))
+    user, _ = create_user_and_headers_direct(db_session)
+    resume = create_resume(db_session, user)
+    job = create_job(db_session, user)
+
+    counts = sync(db_session, queue=True)
+
+    assert counts["indexed_now"] == 2
+    assert reload(db_session, resume).index_status == IndexStatus.INDEXED
+    assert reload(db_session, job).index_status == IndexStatus.INDEXED
+    assert len(get_document_points(user.id, "job", job.id)) == 1

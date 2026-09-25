@@ -1,9 +1,15 @@
-from pydantic import field_validator
+from typing import Literal
+
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+MIN_PRODUCTION_SECRET_LENGTH = 32
 
 
 class Settings(BaseSettings):
     APP_NAME: str = "AI Resume Analyzer"
+    ENVIRONMENT: Literal["development", "production"] = "development"
     DEBUG: bool = False
 
     LOG_LEVEL: str = "INFO"
@@ -17,9 +23,13 @@ class Settings(BaseSettings):
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     CORS_ORIGINS: list[str] = []
+    CORS_ORIGIN_REGEX: str | None = None
+
+    TRUSTED_PROXY_COUNT: int = 0
 
     UPLOAD_DIR: str = "uploads"
     MAX_UPLOAD_SIZE_BYTES: int = 10 * 1024 * 1024
+    STORE_UPLOADED_FILES: bool = True
 
     GEMINI_API_KEY: str | None = None
     GEMINI_MODEL: str = "gemini-3.6-flash"
@@ -64,6 +74,8 @@ class Settings(BaseSettings):
     QDRANT_HOST: str = "localhost"
     QDRANT_PORT: int = 6333
     QDRANT_LOCATION: str | None = None
+    QDRANT_URL: str | None = None
+    QDRANT_API_KEY: str | None = None
     QDRANT_COLLECTION_NAME: str = "resume_embeddings"
 
     REDIS_URL: str | None = "redis://localhost:6379/0"
@@ -88,6 +100,32 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     INDEX_TASK_MAX_RETRIES: int = 3
     INDEX_TASK_RETRY_BASE_SECONDS: int = 10
+
+    @field_validator("DATABASE_URL", "TEST_DATABASE_URL", mode="before")
+    @classmethod
+    def use_psycopg2_driver(cls, value):
+        if isinstance(value, str):
+            for prefix in ("postgres://", "postgresql://"):
+                if value.startswith(prefix):
+                    return "postgresql+psycopg2://" + value[len(prefix):]
+        return value
+
+    @model_validator(mode="after")
+    def check_production_settings(self):
+        if self.ENVIRONMENT != "production":
+            return self
+        problems = []
+        if self.DEBUG:
+            problems.append("DEBUG must be false")
+        if len(self.JWT_SECRET_KEY) < MIN_PRODUCTION_SECRET_LENGTH:
+            problems.append(f"JWT_SECRET_KEY must be at least {MIN_PRODUCTION_SECRET_LENGTH} characters")
+        if not self.CORS_ORIGINS and not self.CORS_ORIGIN_REGEX:
+            problems.append("CORS_ORIGINS (or CORS_ORIGIN_REGEX) must name the frontend")
+        if "*" in self.CORS_ORIGINS:
+            problems.append("CORS_ORIGINS must not contain '*'")
+        if problems:
+            raise ValueError("Unsafe production settings: " + "; ".join(problems))
+        return self
 
     @field_validator("DEBUG", mode="before")
     @classmethod

@@ -40,10 +40,11 @@ register_exception_handlers(app)
 
 app.add_middleware(RequestContextMiddleware)
 
-if settings.CORS_ORIGINS:
+if settings.CORS_ORIGINS or settings.CORS_ORIGIN_REGEX:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.CORS_ORIGINS,
+        allow_origin_regex=settings.CORS_ORIGIN_REGEX,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -67,6 +68,11 @@ def root():
     return {
         "message": "AI Resume Analyzer API"
     }
+
+
+@app.get("/health/live")
+def liveness_check():
+    return {"status": "alive"}
 
 
 @app.get("/health")

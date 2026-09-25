@@ -4,9 +4,10 @@ from collections import defaultdict
 from sqlalchemy.orm import Session
 
 from app.ai.vector_store import indexed_document_ids
+from app.core.config import settings
 from app.core.database import SessionLocal
 from app.models.index_status import IndexStatus
-from app.services.indexing import DOCUMENT_MODELS
+from app.services.indexing import DOCUMENT_MODELS, run_indexing
 
 
 def sync(db: Session, *, queue: bool) -> dict[str, int]:
@@ -41,19 +42,27 @@ def sync(db: Session, *, queue: bool) -> dict[str, int]:
 
     db.commit()
 
-    if to_queue:
+    if to_queue and settings.TASK_QUEUE_ENABLED:
         from app.worker.tasks import index_document_task
 
         for document_type, document_id in to_queue:
             index_document_task.apply_async(args=(document_type, document_id))
         counts["queued"] = len(to_queue)
+    elif to_queue:
+        for document_type, document_id in to_queue:
+            run_indexing(document_type, document_id, final_attempt=True)
+        counts["indexed_now"] = len(to_queue)
 
     return dict(counts)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--queue", action="store_true", help="queue every document that isn't indexed")
+    parser.add_argument(
+        "--queue",
+        action="store_true",
+        help="index every document that isn't indexed (via the worker, or right away when TASK_QUEUE_ENABLED=false)",
+    )
     args = parser.parse_args()
 
     with SessionLocal() as db:
@@ -62,7 +71,8 @@ def main() -> None:
     print(
         f"{counts.get('indexed', 0)} indexed ({counts.get('marked_indexed', 0)} newly marked), "
         f"{counts.get('not_indexed', 0)} not indexed, "
-        f"{counts.get('queued', 0)} queued, {counts.get('marked_pending', 0)} reset to pending"
+        f"{counts.get('queued', 0)} queued, {counts.get('indexed_now', 0)} indexed now, "
+        f"{counts.get('marked_pending', 0)} reset to pending"
     )
 
 

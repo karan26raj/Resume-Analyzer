@@ -92,16 +92,17 @@ def delete_resume(
     db: Session = Depends(get_db)
 ):
     resume = _get_owned_resume(resume_id, current_user.id, db)
-    file_path = _stored_file(resume)
+    file_path = _stored_file(resume) if resume.file_path else None
 
     db.delete(resume)
     db.commit()
     cache.invalidate_resume(current_user.id, resume_id)
 
-    try:
-        file_path.unlink(missing_ok=True)
-    except OSError:
-        logger.exception("Failed to delete stored file for resume %s", resume_id)
+    if file_path is not None:
+        try:
+            file_path.unlink(missing_ok=True)
+        except OSError:
+            logger.exception("Failed to delete stored file for resume %s", resume_id)
 
     remove_document_from_index(
         user_id=current_user.id,
@@ -163,15 +164,16 @@ def upload_resume(
         _validate_file_contents(temporary_path, file_extension)
         raw_text = _extract_text(temporary_path, file_extension)
 
-        final_path = upload_dir / f"{uuid.uuid4()}{file_extension}"
-        os.replace(temporary_path, final_path)
-        temporary_path = None
+        if settings.STORE_UPLOADED_FILES:
+            final_path = upload_dir / f"{uuid.uuid4()}{file_extension}"
+            os.replace(temporary_path, final_path)
+            temporary_path = None
 
         resume = Resume(
             user_id=current_user.id,
             filename=file.filename,
             file_type=file_extension,
-            file_path=final_path.name,
+            file_path=final_path.name if final_path else "",
             raw_text=raw_text,
         )
         db.add(resume)

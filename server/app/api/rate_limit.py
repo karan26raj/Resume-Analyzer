@@ -6,6 +6,7 @@ from fastapi import Depends, HTTPException, Request, status
 
 from app.api.dependencies import get_current_user
 from app.core.config import settings
+from app.core.proxy import client_ip as resolve_client_ip
 from app.core.redis import run
 from app.models.user import User
 
@@ -59,7 +60,7 @@ def enforce(rule: Limit, identifier: str) -> None:
 
 
 def client_ip(request: Request) -> str:
-    return request.client.host if request.client else "unknown"
+    return resolve_client_ip(request.headers, request.client.host if request.client else None)
 
 
 def limit_per_user(rule_factory):

@@ -230,7 +230,7 @@ def test_access_log_line_carries_the_request_id(client, db_session, caplog):
         response = client.get("/jobs", headers={**headers, "X-Request-ID": "trace-jobs-1"})
 
     [line] = [r for r in caplog.records if r.name == "app.access" and "/jobs" in r.getMessage()]
-    assert re.match(r"^GET /jobs 200 \d+ms$", line.getMessage())
+    assert re.match(r"^GET /jobs 200 \d+ms testclient$", line.getMessage())
     assert line.request_id == response.headers["X-Request-ID"] == "trace-jobs-1"
 
 

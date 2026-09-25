@@ -7,6 +7,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.core.errors import INTERNAL_ERROR_MESSAGE, error_response
 from app.core.logging import request_id_var
+from app.core.proxy import client_ip
 
 
 access_logger = logging.getLogger("app.access")
@@ -14,7 +15,7 @@ error_logger = logging.getLogger("app.errors")
 
 REQUEST_ID_HEADER = b"x-request-id"
 VALID_REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
-QUIET_PATHS = {"/health"}
+QUIET_PATHS = {"/health", "/health/live"}
 
 
 def _incoming_request_id(scope: Scope) -> str:
@@ -63,5 +64,15 @@ class RequestContextMiddleware:
         finally:
             duration_ms = (time.perf_counter() - started) * 1000
             level = logging.DEBUG if scope["path"] in QUIET_PATHS else logging.INFO
-            access_logger.log(level, "%s %s %s %.0fms", scope["method"], scope["path"], status_code, duration_ms)
+            headers = {name.decode("latin-1"): value.decode("latin-1") for name, value in scope.get("headers", [])}
+            peer = scope["client"][0] if scope.get("client") else None
+            access_logger.log(
+                level,
+                "%s %s %s %.0fms %s",
+                scope["method"],
+                scope["path"],
+                status_code,
+                duration_ms,
+                client_ip(headers, peer),
+            )
             request_id_var.reset(token)
